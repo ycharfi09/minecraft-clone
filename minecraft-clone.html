@@ -489,10 +489,10 @@ function buildChunkMesh(cx,cz){
           const nx=wx+face.dir[0], ny=y+face.dir[1], nz=wz+face.dir[2];
           const nid = getBlock(nx,ny,nz);
           const nblk = nid?BLOCKS[nid]:null;
-          // Cull faces: for opaque blocks, cull if neighbor is same opaque type
-          // For transparent blocks (water), only cull if neighbor is exactly the same block
+          // Cull faces: for opaque blocks, cull if neighbor is solid (not air/water)
+          // For transparent blocks (water), only cull if neighbor is exactly the same block type
           if (nblk) {
-            if (!blk.transparent && !nblk.transparent && nid === id) continue;
+            if (!blk.transparent && nblk.solid) continue;
             if (blk.transparent && nid === id) continue;
           }
           // Pick texture index
@@ -548,7 +548,7 @@ function buildChunkMesh(cx,cz){
       colArr[i*3]=sh; colArr[i*3+1]=sh; colArr[i*3+2]=sh;
     }
     geo.setAttribute('color', new THREE.Float32BufferAttribute(colArr,3));
-    const mat = new THREE.MeshLambertMaterial({ map: atlasTex, vertexColors:true, transparent, alphaTest: 0.1, side: THREE.FrontSide, depthWrite: !transparent, depthTest: true, blending: transparent ? THREE.NormalBlending : THREE.NoBlending });
+    const mat = new THREE.MeshLambertMaterial({ map: atlasTex, vertexColors:true, transparent, alphaTest: 0.5, side: THREE.FrontSide, depthWrite: !transparent, depthTest: true, blending: transparent ? THREE.NormalBlending : THREE.NoBlending });
     const m = new THREE.Mesh(geo, mat);
     m.renderOrder = transparent ? 1 : 0;
     if (transparent) {
@@ -1006,6 +1006,21 @@ function loop(now){
   });
 
   renderer.clear();
+  
+  // Underwater effect logic
+  const cameraUnderwater = camera.position.y <= SEA_LEVEL;
+  if (cameraUnderwater) {
+    scene.fog.color.setHex(0x204060); // Dark blue fog
+    scene.fog.density = 0.03;
+    scene.fog.near = 2;
+    scene.fog.far = 40;
+  } else {
+    scene.fog.color.setHex(0x87CEEB); // Sky blue fog
+    scene.fog.density = 0.005;
+    scene.fog.near = 20;
+    scene.fog.far = 100;
+  }
+  
   renderer.render(scene, camera);
   requestAnimationFrame(loop);
 }
