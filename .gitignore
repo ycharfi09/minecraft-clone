@@ -1,36 +1,81 @@
+# Examples
+
+## Project with source files only
 ```
-# HTML-specific build artifacts and temp files
-*.tmp
-*.bak
+# No ignores needed for source/config files
+```
+
+## Project with artifacts
+```
+# Compiled and build artifacts
+*.pyc
+__pycache__/
+*.o
+*.obj
+dist/
+build/
+target/
+*.class
+*.exe
+*.dll
+*.so
+*.a
+*.out
+
+# Dependencies
+.venv/
+venv/
+node_modules/
+.mypy_cache/
+.pytest_cache/
+.gradle/
+julia-*/
+zig*/
+
+# Logs and temp files
 *.log
-
-# Browser cache and temp files
-*.cache
-.cache/
-
-# Local storage files
-*.localstorage
-*.sessionstorage
-
-# Temporary files from editors
+*.tmp
 *.swp
 *.swo
-*~
+*.tmp
 
-# Environment files
+# Environment
 .env
 .env.local
 *.env.*
 
-# Coverage reports
+# Editors
+.vscode/
+.idea/
+
+# System files
+.DS_Store
+Thumbs.db
 coverage/
 htmlcov/
 .coverage
 
-# Logs
-*.log
-
-# OS-specific files
-.DS_Store
-Thumbs.db
+# Compressed files
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
 ```
