@@ -132,18 +132,6 @@ BLOCKS.push(
 B.CLAY = BLOCKS.length - 2;
 B.GUNPOWDER = BLOCKS.length - 1;
 
-// Draw clay texture
-drawTile(37,(x,y)=>{
-  const n=rand(x,y,37);
-  return [180+n*20, 190+n*15, 200+n*10];
-});
-// Draw gunpowder texture  
-drawTile(38,(x,y)=>{
-  const n=rand(x,y,38);
-  if (n<0.15) return [30,30,30];
-  return [80+n*40, 80+n*30, 70+n*20];
-});
-
 // ---------- Inventory system ----------
 const inventory = {}; // blockId -> count
 const HOTBAR_SIZE = 9;
@@ -543,6 +531,17 @@ drawTile(35,(x,y)=>{
 drawTile(36,(x,y)=>{
   const n=rand(x,y,36);
   return [C.glow[0]-n*30, C.glow[1]-n*40, C.glow[2]-n*60];
+});
+// Draw clay texture
+drawTile(37,(x,y)=>{
+  const n=rand(x,y,37);
+  return [180+n*20, 190+n*15, 200+n*10];
+});
+// Draw gunpowder texture  
+drawTile(38,(x,y)=>{
+  const n=rand(x,y,38);
+  if (n<0.15) return [30,30,30];
+  return [80+n*40, 80+n*30, 70+n*20];
 });
 
 const atlasTex = new THREE.CanvasTexture(atlas);
