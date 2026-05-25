@@ -1001,8 +1001,10 @@ function loop(now){
   scene.traverse(obj => {
     if (obj.isMesh && obj.material && obj.material.transparent) {
       obj.renderOrder = 1;
+      obj.material.depthWrite = false;
     } else if (obj.isMesh) {
       obj.renderOrder = 0;
+      if (obj.material) obj.material.depthWrite = true;
     }
   });
 
