@@ -371,7 +371,7 @@ function generateChunk(cx,cz){
           else if (biome==='snow') id = B.SNOW;
           else id = B.GRASS;
         }
-        else if (y<=SEA_LEVEL && y>h) id = B.WATER;
+        else if (y === SEA_LEVEL && y > h) id = B.WATER;
         // Ores
         if (id===B.STONE){
           const r = hashN(wx*13+wy(y), y*7, SEED+300+wz);
@@ -489,10 +489,11 @@ function buildChunkMesh(cx,cz){
           const nx=wx+face.dir[0], ny=y+face.dir[1], nz=wz+face.dir[2];
           const nid = getBlock(nx,ny,nz);
           const nblk = nid?BLOCKS[nid]:null;
-          // Cull if neighbor is same type or solid opaque
-          if (nblk){
-            if (!nblk.transparent && !blk.transparent) continue;
-            if (nblk.transparent === blk.transparent && nid===id) continue;
+          // Cull faces: for opaque blocks, cull if neighbor is same opaque type
+          // For transparent blocks (water), only cull if neighbor is exactly the same block
+          if (nblk) {
+            if (!blk.transparent && !nblk.transparent && nid === id) continue;
+            if (blk.transparent && nid === id) continue;
           }
           // Pick texture index
           const texIdx = blk.tex[face.face] ?? blk.tex.side;
@@ -547,9 +548,14 @@ function buildChunkMesh(cx,cz){
       colArr[i*3]=sh; colArr[i*3+1]=sh; colArr[i*3+2]=sh;
     }
     geo.setAttribute('color', new THREE.Float32BufferAttribute(colArr,3));
-    const mat = new THREE.MeshLambertMaterial({ map: atlasTex, vertexColors:true, transparent, alphaTest: 0.1, side: transparent?THREE.DoubleSide:THREE.FrontSide, depthWrite: true, depthTest: true, blending: transparent ? THREE.NormalBlending : THREE.NoBlending });
+    const mat = new THREE.MeshLambertMaterial({ map: atlasTex, vertexColors:true, transparent, alphaTest: 0.1, side: transparent?THREE.DoubleSide:THREE.FrontSide, depthWrite: !transparent, depthTest: true, blending: transparent ? THREE.NormalBlending : THREE.NoBlending });
     const m = new THREE.Mesh(geo, mat);
     m.renderOrder = transparent ? 1 : 0;
+    if (transparent) {
+      m.onBeforeRender = function(renderer, scene, camera, geometry, material, group) {
+        renderer.clearDepth();
+      };
+    }
     m.frustumCulled = true;
     group.add(m);
   }
@@ -570,7 +576,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0x88bbee);
 renderer.sortObjects = true;
-renderer.autoClear = true;
+renderer.autoClear = false;
 
 const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0x88bbee, 40, RENDER_DIST*CHUNK_SIZE);
@@ -997,6 +1003,7 @@ function loop(now){
     }
   });
 
+  renderer.clear();
   renderer.render(scene, camera);
   requestAnimationFrame(loop);
 }
