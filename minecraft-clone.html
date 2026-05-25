@@ -371,7 +371,7 @@ function generateChunk(cx,cz){
           else if (biome==='snow') id = B.SNOW;
           else id = B.GRASS;
         }
-        else if (y === SEA_LEVEL && y > h) id = B.WATER;
+        else if (y === SEA_LEVEL && y === h + 1) id = B.WATER;
         // Ores
         if (id===B.STONE){
           const r = hashN(wx*13+wy(y), y*7, SEED+300+wz);
@@ -494,6 +494,9 @@ function buildChunkMesh(cx,cz){
           if (nblk) {
             if (!blk.transparent && !nblk.transparent && nid === id) continue;
             if (blk.transparent && nid === id) continue;
+            // If current block is transparent (like water) and neighbor is solid opaque,
+            // don't render this face since the solid block will occlude it
+            if (blk.transparent && nblk.solid && !nblk.transparent) continue;
           }
           // Pick texture index
           const texIdx = blk.tex[face.face] ?? blk.tex.side;
