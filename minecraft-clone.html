@@ -551,7 +551,7 @@ function buildChunkMesh(cx,cz){
       colArr[i*3]=sh; colArr[i*3+1]=sh; colArr[i*3+2]=sh;
     }
     geo.setAttribute('color', new THREE.Float32BufferAttribute(colArr,3));
-    const mat = new THREE.MeshLambertMaterial({ map: atlasTex, vertexColors:true, transparent, alphaTest: 0.1, side: transparent?THREE.DoubleSide:THREE.FrontSide, depthWrite: !transparent, depthTest: true, blending: transparent ? THREE.NormalBlending : THREE.NoBlending });
+    const mat = new THREE.MeshLambertMaterial({ map: atlasTex, vertexColors:true, transparent, alphaTest: 0.1, side: THREE.FrontSide, depthWrite: !transparent, depthTest: true, blending: transparent ? THREE.NormalBlending : THREE.NoBlending });
     const m = new THREE.Mesh(geo, mat);
     m.renderOrder = transparent ? 1 : 0;
     if (transparent) {
