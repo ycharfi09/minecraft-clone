@@ -1361,6 +1361,8 @@ addEventListener('resize', ()=>{
 // ---------- Boot ----------
 document.getElementById('start').addEventListener('click', ()=>{
   canvas.requestPointerLock();
+  // Hide menu immediately on click
+  document.getElementById('menu').style.display = 'none';
 });
 buildHotbar();
 spawnPlayer();
