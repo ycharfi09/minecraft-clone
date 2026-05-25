@@ -1359,20 +1359,34 @@ addEventListener('resize', ()=>{
 });
 
 // ---------- Boot ----------
+let gameStarted = false;
+
+function startGame() {
+  if (gameStarted) return;
+  gameStarted = true;
+  
+  buildHotbar();
+  spawnPlayer();
+  updateChunks();
+  // Force initial meshing
+  for (const [k] of chunks){
+    const [cx,cz] = k.split(',').map(Number);
+    buildChunkMesh(cx,cz);
+  }
+  requestAnimationFrame(loop);
+}
+
 document.getElementById('start').addEventListener('click', ()=>{
   canvas.requestPointerLock();
-  // Hide menu immediately on click
-  document.getElementById('menu').style.display = 'none';
 });
-buildHotbar();
-spawnPlayer();
-updateChunks();
-// Force initial meshing
-for (const [k] of chunks){
-  const [cx,cz] = k.split(',').map(Number);
-  buildChunkMesh(cx,cz);
-}
-requestAnimationFrame(loop);
+
+document.addEventListener('pointerlockchange', ()=>{
+  locked = document.pointerLockElement===canvas;
+  document.getElementById('menu').style.display = locked?'none':'flex';
+  if (locked && !gameStarted) {
+    startGame();
+  }
+});
 </script>
 </body>
 </html>
