@@ -813,67 +813,76 @@ function buildChunkMesh(cx,cz){
 }
 
 // ---------- Three.js setup ----------
-const canvas = document.getElementById('c');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias:false, logDepthBuffer:true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setClearColor(0x88bbee);
-renderer.sortObjects = true;
-renderer.autoClear = true;
+let renderer, scene, camera, hemi, sun, moon, ambient, stars, sunMesh, moonMesh, cloudGroup, highlight;
+let canvas;
+let initialized = false;
 
-const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0x88bbee, 40, RENDER_DIST*CHUNK_SIZE);
-
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 500);
-camera.updateProjectionMatrix();
-
-// Lights
-const hemi = new THREE.HemisphereLight(0xbcd7ff, 0x3a3020, 0.6);
-scene.add(hemi);
-const sun = new THREE.DirectionalLight(0xffffff, 0.9);
-sun.position.set(50,100,30);
-scene.add(sun);
-const moon = new THREE.DirectionalLight(0x6070a0, 0.25);
-moon.position.set(-50,80,-30);
-scene.add(moon);
-const ambient = new THREE.AmbientLight(0xffffff, 0.25);
-scene.add(ambient);
-
-// Sky - stars
-const starGeo = new THREE.BufferGeometry();
-const starPos = [];
-for (let i=0;i<800;i++){
-  const r=250, th=Math.random()*Math.PI*2, ph=Math.acos(Math.random()*2-1);
-  starPos.push(r*Math.sin(ph)*Math.cos(th), r*Math.cos(ph), r*Math.sin(ph)*Math.sin(th));
+function initThreeJS() {
+  if (initialized) return;
+  initialized = true;
+  
+  canvas = document.getElementById('c');
+  renderer = new THREE.WebGLRenderer({ canvas, antialias:false, logDepthBuffer:true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x88bbee);
+  renderer.sortObjects = true;
+  renderer.autoClear = true;
+  
+  scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0x88bbee, 40, RENDER_DIST*CHUNK_SIZE);
+  
+  camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 500);
+  camera.updateProjectionMatrix();
+  
+  // Lights
+  hemi = new THREE.HemisphereLight(0xbcd7ff, 0x3a3020, 0.6);
+  scene.add(hemi);
+  sun = new THREE.DirectionalLight(0xffffff, 0.9);
+  sun.position.set(50,100,30);
+  scene.add(sun);
+  moon = new THREE.DirectionalLight(0x6070a0, 0.25);
+  moon.position.set(-50,80,-30);
+  scene.add(moon);
+  ambient = new THREE.AmbientLight(0xffffff, 0.25);
+  scene.add(ambient);
+  
+  // Sky - stars
+  const starGeo = new THREE.BufferGeometry();
+  const starPos = [];
+  for (let i=0;i<800;i++){
+    const r=250, th=Math.random()*Math.PI*2, ph=Math.acos(Math.random()*2-1);
+    starPos.push(r*Math.sin(ph)*Math.cos(th), r*Math.cos(ph), r*Math.sin(ph)*Math.sin(th));
+  }
+  starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPos,3));
+  stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color:0xffffff, size:1.4, sizeAttenuation:false, transparent:true, opacity:0 }));
+  scene.add(stars);
+  
+  // Sun/moon visual
+  sunMesh = new THREE.Mesh(new THREE.SphereGeometry(8,16,16), new THREE.MeshBasicMaterial({color:0xffeeaa}));
+  scene.add(sunMesh);
+  moonMesh = new THREE.Mesh(new THREE.SphereGeometry(6,16,16), new THREE.MeshBasicMaterial({color:0xe0e0f0}));
+  scene.add(moonMesh);
+  
+  // Clouds
+  cloudGroup = new THREE.Group();
+  const cloudMat = new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.8});
+  for (let i=0;i<30;i++){
+    const g = new THREE.BoxGeometry(10+Math.random()*20, 2, 8+Math.random()*16);
+    const m = new THREE.Mesh(g, cloudMat);
+    m.position.set((Math.random()-0.5)*400, 70+Math.random()*8, (Math.random()-0.5)*400);
+    cloudGroup.add(m);
+  }
+  scene.add(cloudGroup);
+  
+  // Highlight block
+  highlight = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(1.002,1.002,1.002)),
+    new THREE.LineBasicMaterial({ color:0x000000, linewidth:2 })
+  );
+  highlight.visible = false;
+  scene.add(highlight);
 }
-starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPos,3));
-const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color:0xffffff, size:1.4, sizeAttenuation:false, transparent:true, opacity:0 }));
-scene.add(stars);
-
-// Sun/moon visual
-const sunMesh = new THREE.Mesh(new THREE.SphereGeometry(8,16,16), new THREE.MeshBasicMaterial({color:0xffeeaa}));
-scene.add(sunMesh);
-const moonMesh = new THREE.Mesh(new THREE.SphereGeometry(6,16,16), new THREE.MeshBasicMaterial({color:0xe0e0f0}));
-scene.add(moonMesh);
-
-// Clouds
-const cloudGroup = new THREE.Group();
-const cloudMat = new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.8});
-for (let i=0;i<30;i++){
-  const g = new THREE.BoxGeometry(10+Math.random()*20, 2, 8+Math.random()*16);
-  const m = new THREE.Mesh(g, cloudMat);
-  m.position.set((Math.random()-0.5)*400, 70+Math.random()*8, (Math.random()-0.5)*400);
-  cloudGroup.add(m);
-}
-scene.add(cloudGroup);
-
-// Highlight block
-const highlight = new THREE.LineSegments(
-  new THREE.EdgesGeometry(new THREE.BoxGeometry(1.002,1.002,1.002)),
-  new THREE.LineBasicMaterial({ color:0x000000, linewidth:2 })
-);
-highlight.visible = false;
-scene.add(highlight);
 
 // ---------- Player ----------
 const player = {
@@ -926,29 +935,37 @@ addEventListener('keydown', e=>{
 });
 
 let locked = false;
-canvas.addEventListener('click', ()=>{
-  if (!locked) canvas.requestPointerLock();
-});
-document.addEventListener('pointerlockchange', ()=>{
-  locked = document.pointerLockElement===canvas;
-  document.getElementById('menu').style.display = locked?'none':'flex';
-});
-document.addEventListener('mousemove', e=>{
-  if (!locked) return;
-  player.yaw -= e.movementX*0.0025;
-  player.pitch -= e.movementY*0.0025;
-  player.pitch = Math.max(-Math.PI/2+0.01, Math.min(Math.PI/2-0.01, player.pitch));
-});
-canvas.addEventListener('mousedown', e=>{
-  if (!locked) return;
-  if (e.button===0) breakBlock();
-  if (e.button===2) placeBlock();
-});
-canvas.addEventListener('contextmenu', e=>e.preventDefault());
-canvas.addEventListener('wheel', e=>{
-  selectedSlot = (selectedSlot + (e.deltaY>0?1:-1) + 9) % 9;
-  updateHotbar();
-});
+
+function setupEventListeners() {
+  if (!canvas) return;
+  
+  canvas.addEventListener('click', ()=>{
+    if (!locked) canvas.requestPointerLock();
+  });
+  document.addEventListener('pointerlockchange', ()=>{
+    locked = document.pointerLockElement===canvas;
+    document.getElementById('menu').style.display = locked?'none':'flex';
+    if (locked && !gameStarted) {
+      startGame();
+    }
+  });
+  document.addEventListener('mousemove', e=>{
+    if (!locked) return;
+    player.yaw -= e.movementX*0.0025;
+    player.pitch -= e.movementY*0.0025;
+    player.pitch = Math.max(-Math.PI/2+0.01, Math.min(Math.PI/2-0.01, player.pitch));
+  });
+  canvas.addEventListener('mousedown', e=>{
+    if (!locked) return;
+    if (e.button===0) breakBlock();
+    if (e.button===2) placeBlock();
+  });
+  canvas.addEventListener('contextmenu', e=>e.preventDefault());
+  canvas.addEventListener('wheel', e=>{
+    selectedSlot = (selectedSlot + (e.deltaY>0?1:-1) + 9) % 9;
+    updateHotbar();
+  });
+}
 
 // ---------- Hotbar ----------
 const hotbarItems = [B.GRASS,B.DIRT,B.STONE,B.COBBLESTONE,B.OAK_PLANKS,B.OAK_LOG,B.GLASS,B.BRICK,B.GLOWSTONE];
@@ -1365,6 +1382,8 @@ function startGame() {
   if (gameStarted) return;
   gameStarted = true;
   
+  initThreeJS();
+  setupEventListeners();
   buildHotbar();
   spawnPlayer();
   updateChunks();
@@ -1382,10 +1401,6 @@ document.getElementById('start').addEventListener('click', ()=>{
 
 document.addEventListener('pointerlockchange', ()=>{
   locked = document.pointerLockElement===canvas;
-  document.getElementById('menu').style.display = locked?'none':'flex';
-  if (locked && !gameStarted) {
-    startGame();
-  }
 });
 </script>
 </body>
