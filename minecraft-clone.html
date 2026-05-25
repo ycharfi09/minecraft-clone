@@ -21,6 +21,27 @@
   #menu p{max-width:560px;line-height:1.5}
   #menu button{margin-top:14px;padding:10px 22px;font-family:monospace;font-size:16px;background:#4a4;color:#fff;border:2px solid #060;cursor:pointer}
   #menu button:hover{background:#5b5}
+  #crafting{position:fixed;inset:0;background:rgba(0,0,0,.8);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:20}
+  #crafting.active{display:flex}
+  #crafting h2{color:#7CFC00;margin-bottom:20px;text-shadow:2px 2px 0 #000}
+  #crafting-grid{display:grid;grid-template-columns:repeat(3,60px);gap:4px;margin-bottom:20px}
+  .craft-slot{width:60px;height:60px;background:rgba(80,80,80,.6);border:2px solid #666;display:flex;align-items:center;justify-content:center;position:relative;image-rendering:pixelated;cursor:pointer}
+  .craft-slot.sel{border-color:#ff0}
+  .craft-slot canvas{width:48px;height:48px;image-rendering:pixelated}
+  #crafting-result{display:flex;flex-direction:column;align-items:center;gap:10px}
+  #result-slot{width:80px;height:80px;background:rgba(100,100,100,.7);border:3px solid #8a8;image-rendering:pixelated;cursor:pointer}
+  #result-slot canvas{width:64px;height:64px;image-rendering:pixelated}
+  #craft-btn{padding:12px 30px;font-family:monospace;font-size:18px;background:#5a5;color:#fff;border:2px solid #383;cursor:pointer}
+  #craft-btn:hover{background:#6b6}
+  #craft-btn:disabled{background:#555;border-color:#444;cursor:not-allowed}
+  #inventory{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);display:none;flex-direction:column;align-items:center;z-index:15;background:rgba(0,0,0,.85);padding:20px;border:3px solid #444}
+  #inventory.active{display:flex}
+  #inv-grid{display:grid;grid-template-columns:repeat(9,48px);gap:2px;margin-top:10px}
+  .inv-slot{width:48px;height:48px;background:rgba(100,100,100,.5);border:2px solid #555;display:flex;align-items:center;justify-content:center;position:relative;image-rendering:pixelated}
+  .inv-slot canvas{width:40px;height:40px;image-rendering:pixelated}
+  .inv-slot .n{position:absolute;bottom:1px;right:3px;font-size:11px;text-shadow:1px 1px 0 #000}
+  #drop-item{position:absolute;pointer-events:none;z-index:5}
+  .dropped-item{position:absolute;width:32px;height:32px;pointer-events:none;z-index:4;image-rendering:pixelated}
 </style>
 </head>
 <body>
@@ -30,10 +51,25 @@
 <div id="hud"></div>
 <div id="menu">
   <h1>Voxelcraft</h1>
-  <p><b>Controls:</b> WASD move · Space jump · Shift sneak · Mouse look · L-click break · R-click place · 1–9 / wheel hotbar · F3 debug · F5 save · F9 load</p>
-  <p>A single-file voxel sandbox. Procedurally generated world with biomes, caves, trees, ores, day/night cycle.</p>
+  <p><b>Controls:</b> WASD move · Space jump · Shift sneak · Mouse look · L-click break · R-click place · 1–9 / wheel hotbar · E craft/inventory · F3 debug · F5 save · F9 load</p>
+  <p>A single-file voxel sandbox. Procedurally generated world with biomes, caves, trees, ores, day/night cycle, crafting, and item drops.</p>
   <button id="start">Click to Play</button>
 </div>
+<div id="crafting">
+  <h2>Crafting</h2>
+  <div id="crafting-grid"></div>
+  <div id="crafting-result">
+    <div id="result-slot"></div>
+    <button id="craft-btn">Craft</button>
+  </div>
+  <p style="margin-top:15px;color:#aaa">Click slots to place items. Press E to close.</p>
+</div>
+<div id="inventory">
+  <h3 style="color:#7CFC00;margin:0 0 10px">Inventory</h3>
+  <div id="inv-grid"></div>
+  <p style="margin-top:10px;color:#aaa;font-size:12px">Press E to close</p>
+</div>
+<div id="drop-item"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -77,6 +113,218 @@ const BLOCKS = [
 ];
 // Name alias
 for (let i=1;i<BLOCKS.length;i++) B[BLOCKS[i].name.toUpperCase().replace(/ /g,'_')] = i;
+
+// ---------- Crafting recipes ----------
+const RECIPES = [
+  { result: B.OAK_PLANKS, count: 4, pattern: [[B.OAK_LOG]] },
+  { result: B.COBBLESTONE, count: 1, pattern: [[B.STONE]] }, // stone to cobble via smelting simulated
+  { result: B.CRAFTING_TABLE, count: 1, pattern: [[B.OAK_PLANKS,B.OAK_PLANKS],[B.OAK_PLANKS,B.OAK_PLANKS]] },
+  { result: B.BRICK, count: 4, pattern: [[B.CLAY,B.CLAY],[B.CLAY,B.CLAY]] },
+  { result: B.GLASS, count: 1, pattern: [[B.SAND,B.SAND,B.SAND],[B.SAND,B.SAND,B.SAND],[B.SAND,B.SAND,B.SAND]] },
+  { result: B.TNT, count: 1, pattern: [[B.GUNPOWDER,B.SAND,B.GUNPOWDER],[B.SAND,B.GUNPOWDER,B.SAND],[B.GUNPOWDER,B.SAND,B.GUNPOWDER]] },
+];
+
+// Add new blocks for crafting
+BLOCKS.push(
+  {name:'Clay', solid:true, tex:{top:37,bot:37,side:37}},
+  {name:'Gunpowder', solid:true, tex:{top:38,bot:38,side:38}},
+);
+B.CLAY = BLOCKS.length - 2;
+B.GUNPOWDER = BLOCKS.length - 1;
+
+// Draw clay texture
+drawTile(37,(x,y)=>{
+  const n=rand(x,y,37);
+  return [180+n*20, 190+n*15, 200+n*10];
+});
+// Draw gunpowder texture  
+drawTile(38,(x,y)=>{
+  const n=rand(x,y,38);
+  if (n<0.15) return [30,30,30];
+  return [80+n*40, 80+n*30, 70+n*20];
+});
+
+// ---------- Inventory system ----------
+const inventory = {}; // blockId -> count
+const HOTBAR_SIZE = 9;
+const INVENTORY_ROWS = 3;
+const INVENTORY_COLS = 9;
+
+function addToInventory(blockId, count=1){
+  if (!inventory[blockId]) inventory[blockId] = 0;
+  inventory[blockId] += count;
+  if (inventory[blockId] <= 0) delete inventory[blockId];
+  updateHotbar();
+  updateInventoryUI();
+}
+
+function removeFromInventory(blockId, count=1){
+  if (!inventory[blockId]) return false;
+  inventory[blockId] -= count;
+  if (inventory[blockId] <= 0) delete inventory[blockId];
+  updateHotbar();
+  updateInventoryUI();
+  return true;
+}
+
+function hasItem(blockId, count=1){
+  return (inventory[blockId] || 0) >= count;
+}
+
+// Initialize with some starter items - moved to after hotbarItems is defined
+
+// ---------- Crafting UI state ----------
+let craftingGrid = Array(9).fill(null);
+let selectedCraftSlot = 0;
+let craftingOpen = false;
+let inventoryOpen = false;
+
+function buildCraftingGrid(){
+  const grid = document.getElementById('crafting-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  for (let i=0;i<9;i++){
+    const slot = document.createElement('div');
+    slot.className = 'craft-slot' + (i===selectedCraftSlot?' sel':'');
+    slot.dataset.index = i;
+    if (craftingGrid[i]){
+      const c = document.createElement('canvas');
+      c.width=16; c.height=16;
+      const ctx = c.getContext('2d');
+      const texIdx = BLOCKS[craftingGrid[i]].tex.top;
+      const tx = (texIdx%ATLAS_W)*TILE, ty = Math.floor(texIdx/ATLAS_W)*TILE;
+      ctx.drawImage(atlas, tx, ty, TILE, TILE, 0, 0, 16, 16);
+      slot.appendChild(c);
+    }
+    slot.addEventListener('click', ()=>{
+      selectedCraftSlot = i;
+      buildCraftingGrid();
+      updateCraftingResult();
+    });
+    slot.addEventListener('dblclick', ()=>{
+      craftingGrid[i] = null;
+      buildCraftingGrid();
+      updateCraftingResult();
+    });
+    grid.appendChild(slot);
+  }
+}
+
+function updateCraftingResult(){
+  const resultSlot = document.getElementById('result-slot');
+  const craftBtn = document.getElementById('craft-btn');
+  if (!resultSlot || !craftBtn) return;
+  resultSlot.innerHTML = '';
+  
+  const recipe = findRecipe(craftingGrid);
+  if (recipe){
+    const c = document.createElement('canvas');
+    c.width=16; c.height=16;
+    const ctx = c.getContext('2d');
+    const texIdx = BLOCKS[recipe.result].tex.top;
+    const tx = (texIdx%ATLAS_W)*TILE, ty = Math.floor(texIdx/ATLAS_W)*TILE;
+    ctx.drawImage(atlas, tx, ty, TILE, TILE, 0, 0, 16, 16);
+    resultSlot.appendChild(c);
+    craftBtn.disabled = false;
+    craftBtn.onclick = ()=>{
+      // Remove ingredients
+      for (let i=0;i<9;i++){
+        if (craftingGrid[i]){
+          removeFromInventory(craftingGrid[i], 1);
+        }
+      }
+      // Add result
+      addToInventory(recipe.result, recipe.count);
+      // Clear grid
+      craftingGrid = Array(9).fill(null);
+      buildCraftingGrid();
+      updateCraftingResult();
+    };
+  } else {
+    craftBtn.disabled = true;
+    craftBtn.onclick = null;
+  }
+}
+
+function findRecipe(grid){
+  for (const recipe of RECIPES){
+    if (matchesRecipe(grid, recipe)) return recipe;
+  }
+  return null;
+}
+
+function matchesRecipe(grid, recipe){
+  const pattern = recipe.pattern;
+  const pH = pattern.length;
+  const pW = pattern[0].length;
+  
+  // Try all positions in 3x3 grid
+  for (let offsetY=0; offsetY<=3-pH; offsetY++){
+    for (let offsetX=0; offsetX<=3-pW; offsetX++){
+      let match = true;
+      for (let py=0; py<pH && match; py++){
+        for (let px=0; px<pW && match; px++){
+          const gx = offsetX + px;
+          const gy = offsetY + py;
+          const gIdx = gy * 3 + gx;
+          const required = pattern[py][px];
+          const actual = grid[gIdx];
+          if (required !== actual) match = false;
+        }
+      }
+      if (match) return true;
+    }
+  }
+  return false;
+}
+
+function openCrafting(){
+  craftingOpen = true;
+  document.getElementById('crafting').classList.add('active');
+  buildCraftingGrid();
+  updateCraftingResult();
+}
+
+function closeCrafting(){
+  craftingOpen = false;
+  document.getElementById('crafting').classList.remove('active');
+  // Return items from crafting grid to inventory
+  for (let i=0;i<9;i++){
+    if (craftingGrid[i]){
+      addToInventory(craftingGrid[i], 1);
+      craftingGrid[i] = null;
+    }
+  }
+}
+
+function toggleInventory(){
+  inventoryOpen = !inventoryOpen;
+  document.getElementById('inventory').classList.toggle('active', inventoryOpen);
+  if (inventoryOpen) updateInventoryUI();
+}
+
+function updateInventoryUI(){
+  const grid = document.getElementById('inv-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  const allItems = Object.keys(inventory).map(Number);
+  for (const id of allItems){
+    const slot = document.createElement('div');
+    slot.className = 'inv-slot';
+    const c = document.createElement('canvas');
+    c.width=16; c.height=16;
+    const ctx = c.getContext('2d');
+    const texIdx = BLOCKS[id].tex.top;
+    const tx = (texIdx%ATLAS_W)*TILE, ty = Math.floor(texIdx/ATLAS_W)*TILE;
+    ctx.drawImage(atlas, tx, ty, TILE, TILE, 0, 0, 16, 16);
+    slot.appendChild(c);
+    const n = document.createElement('div');
+    n.className = 'n';
+    n.textContent = inventory[id];
+    slot.appendChild(n);
+    grid.appendChild(slot);
+  }
+}
 
 // ---------- Texture atlas (procedural 16x16) ----------
 const ATLAS_W = 8, ATLAS_H = 8; // 64 slots
@@ -655,12 +903,27 @@ addEventListener('keydown', e=>{
   if (e.code==='F5'){ e.preventDefault(); saveGame(); }
   if (e.code==='F9'){ e.preventDefault(); loadGame(); }
   if (e.code==='KeyF'){ player.fly=!player.fly; player.vel.y=0; }
+  if (e.code==='KeyE' && locked){
+    e.preventDefault();
+    if (!craftingOpen) openCrafting();
+    else closeCrafting();
+  }
   if (/^Digit[1-9]$/.test(e.code)){
     selectedSlot = parseInt(e.code.slice(5))-1;
     updateHotbar();
   }
 });
 addEventListener('keyup', e=>{ keys[e.code]=false; });
+
+// Close crafting/inventory on Escape
+addEventListener('keydown', e=>{
+  if (e.code==='Escape' && craftingOpen){
+    closeCrafting();
+  }
+  if (e.code==='KeyE' && !locked && inventoryOpen){
+    toggleInventory();
+  }
+});
 
 let locked = false;
 canvas.addEventListener('click', ()=>{
@@ -690,6 +953,12 @@ canvas.addEventListener('wheel', e=>{
 // ---------- Hotbar ----------
 const hotbarItems = [B.GRASS,B.DIRT,B.STONE,B.COBBLESTONE,B.OAK_PLANKS,B.OAK_LOG,B.GLASS,B.BRICK,B.GLOWSTONE];
 let selectedSlot = 0;
+
+// Initialize with some starter items
+hotbarItems.forEach(id => {
+  inventory[id] = 64;
+});
+
 function buildHotbar(){
   const hb = document.getElementById('hotbar');
   hb.innerHTML='';
@@ -711,6 +980,73 @@ function buildHotbar(){
   }
 }
 function updateHotbar(){ buildHotbar(); }
+
+// ---------- Dropped items ----------
+const droppedItems = []; // {x,y,z, id, count, mesh}
+
+function spawnDroppedItem(x, y, z, id, count=1){
+  droppedItems.push({x:x+0.5, y:y+0.5, z:z+0.5, id, count, mesh:null, vy:3, life:300});
+}
+
+function updateDroppedItems(dt){
+  for (let i=droppedItems.length-1; i>=0; i--){
+    const item = droppedItems[i];
+    item.life--;
+    
+    // Gravity
+    item.vy -= 20 * dt;
+    item.y += item.vy * dt;
+    
+    // Ground collision
+    if (item.y < Math.floor(item.y) + 0.2 && item.vy < 0){
+      item.y = Math.floor(item.y) + 0.2;
+      item.vy = 0;
+    }
+    
+    // Remove if expired or fell out of world
+    if (item.life <= 0 || item.y < -10){
+      if (item.mesh) scene.remove(item.mesh);
+      droppedItems.splice(i, 1);
+      continue;
+    }
+    
+    // Create/update mesh
+    if (!item.mesh){
+      const geo = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+      const mat = new THREE.MeshLambertMaterial({map: atlasTex});
+      item.mesh = new THREE.Mesh(geo, mat);
+      scene.add(item.mesh);
+    }
+    item.mesh.position.set(item.x, item.y, item.z);
+    item.mesh.rotation.y += dt * 2;
+    
+    // Set UV to show the item texture
+    const texIdx = BLOCKS[item.id].tex.top;
+    const tx = texIdx % ATLAS_W, ty = Math.floor(texIdx / ATLAS_W);
+    const u0 = tx/ATLAS_W, v0 = 1 - (ty+1)/ATLAS_H;
+    const u1 = (tx+1)/ATLAS_W, v1 = 1 - ty/ATLAS_H;
+    const uvAttr = item.mesh.geometry.getAttribute('uv');
+    for (let j=0; j<uvAttr.count; j++){
+      const u = uvAttr.getX(j), v = uvAttr.getY(j);
+      uvAttr.setXY(j, u0 + u*(u1-u0), v0 + v*(v1-v0));
+    }
+    uvAttr.needsUpdate = true;
+  }
+}
+
+function collectDroppedItems(){
+  const px = player.pos.x, py = player.pos.y, pz = player.pos.z;
+  for (let i=droppedItems.length-1; i>=0; i--){
+    const item = droppedItems[i];
+    const dx = item.x - px, dy = (item.y+0.3) - (py+0.8), dz = item.z - pz;
+    const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+    if (dist < 1.2){
+      addToInventory(item.id, item.count);
+      if (item.mesh) scene.remove(item.mesh);
+      droppedItems.splice(i, 1);
+    }
+  }
+}
 
 // ---------- Raycasting / block interaction ----------
 function raycast(maxDist=6){
@@ -741,6 +1077,8 @@ function breakBlock(){
   const hit = raycast();
   if (!hit) return;
   if (hit.id===B.BEDROCK) return;
+  // Spawn dropped item
+  spawnDroppedItem(hit.x, hit.y, hit.z, hit.id, 1);
   setBlock(hit.x, hit.y, hit.z, 0);
 }
 function placeBlock(){
@@ -819,6 +1157,9 @@ function updatePlayer(dt){
   if (player.pos.y < -10) spawnPlayer();
 
   player.inWater = inWaterAt(player.pos.x, player.pos.y, player.pos.z);
+  
+  // Collect dropped items
+  collectDroppedItems();
 
   camera.position.set(player.pos.x, player.pos.y+player.eye, player.pos.z);
   camera.rotation.order = 'YXZ';
@@ -977,6 +1318,7 @@ function loop(now){
     updatePlayer(dt);
     updateChunks();
     updateSky(dt);
+    updateDroppedItems(dt);
     // Clouds drift
     cloudGroup.position.x = (cloudGroup.position.x + dt*2) % 400;
     cloudGroup.position.z = camera.position.z*0.1;
