@@ -490,10 +490,10 @@ function buildChunkMesh(cx,cz){
           const nid = getBlock(nx,ny,nz);
           const nblk = nid?BLOCKS[nid]:null;
           // Cull faces: for opaque blocks, cull if neighbor is solid (not air/water)
-          // For transparent blocks (water), only cull if neighbor is exactly the same block type
+          // For transparent blocks (water), only cull if neighbor is exactly the same block type OR if neighbor is a solid opaque block
           if (nblk) {
             if (!blk.transparent && nblk.solid) continue;
-            if (blk.transparent && nid === id) continue;
+            if (blk.transparent && (nid === id || (nblk.solid && !nblk.transparent))) continue;
           }
           // Pick texture index
           const texIdx = blk.tex[face.face] ?? blk.tex.side;
@@ -551,11 +551,6 @@ function buildChunkMesh(cx,cz){
     const mat = new THREE.MeshLambertMaterial({ map: atlasTex, vertexColors:true, transparent, alphaTest: 0.5, side: THREE.FrontSide, depthWrite: !transparent, depthTest: true, blending: transparent ? THREE.NormalBlending : THREE.NoBlending });
     const m = new THREE.Mesh(geo, mat);
     m.renderOrder = transparent ? 1 : 0;
-    if (transparent) {
-      m.onBeforeRender = function(renderer, scene, camera, geometry, material, group) {
-        renderer.clearDepth();
-      };
-    }
     m.frustumCulled = true;
     group.add(m);
   }
@@ -576,7 +571,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0x88bbee);
 renderer.sortObjects = true;
-renderer.autoClear = false;
+renderer.autoClear = true;
 
 const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0x88bbee, 40, RENDER_DIST*CHUNK_SIZE);
@@ -993,17 +988,6 @@ function loop(now){
     flashTimer -= dt;
     hud.textContent += '\n\n>> '+flashText;
   }
-
-  // Sort transparent objects back-to-front for proper blending
-  scene.traverse(obj => {
-    if (obj.isMesh && obj.material && obj.material.transparent) {
-      obj.renderOrder = 1;
-      obj.material.depthWrite = false;
-    } else if (obj.isMesh) {
-      obj.renderOrder = 0;
-      if (obj.material) obj.material.depthWrite = true;
-    }
-  });
 
   renderer.clear();
   
