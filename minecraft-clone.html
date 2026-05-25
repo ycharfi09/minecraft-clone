@@ -547,13 +547,16 @@ function buildChunkMesh(cx,cz){
       colArr[i*3]=sh; colArr[i*3+1]=sh; colArr[i*3+2]=sh;
     }
     geo.setAttribute('color', new THREE.Float32BufferAttribute(colArr,3));
-    const mat = new THREE.MeshLambertMaterial({ map: atlasTex, vertexColors:true, transparent, alphaTest: transparent?0.1:0, side: transparent?THREE.DoubleSide:THREE.FrontSide });
+    const mat = new THREE.MeshLambertMaterial({ map: atlasTex, vertexColors:true, transparent, alphaTest: transparent?0.1:0, side: transparent?THREE.DoubleSide:THREE.FrontSide, depthWrite: !transparent, blending: transparent ? THREE.NormalBlending : THREE.NoBlending });
     const m = new THREE.Mesh(geo, mat);
+    m.renderOrder = transparent ? 1 : 0;
     m.frustumCulled = true;
     group.add(m);
   }
   makeMesh(positions,normals,uvs,indices,false);
-  makeMesh(tPos,tNorm,tUv,tIdx,true);
+  if (tPos.length > 0) {
+    makeMesh(tPos,tNorm,tUv,tIdx,true);
+  }
 
   scene.add(group);
   ch.mesh = group;
@@ -566,11 +569,14 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias:false });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0x88bbee);
+renderer.sortObjects = true;
 
 const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0x88bbee, 40, RENDER_DIST*CHUNK_SIZE);
 
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 500);
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.05, 500);
+camera.near = 0.01;
+camera.updateProjectionMatrix();
 
 // Lights
 const hemi = new THREE.HemisphereLight(0xbcd7ff, 0x3a3020, 0.6);
@@ -981,6 +987,13 @@ function loop(now){
     flashTimer -= dt;
     hud.textContent += '\n\n>> '+flashText;
   }
+
+  // Sort transparent objects back-to-front for proper blending
+  scene.traverse(obj => {
+    if (obj.isMesh && obj.material.transparent) {
+      obj.renderOrder = 0;
+    }
+  });
 
   renderer.render(scene, camera);
   requestAnimationFrame(loop);
