@@ -494,12 +494,6 @@ function buildChunkMesh(cx,cz){
           if (nblk) {
             if (!blk.transparent && !nblk.transparent && nid === id) continue;
             if (blk.transparent && nid === id) continue;
-            // If current block is transparent (like water) and neighbor is solid opaque,
-            // don't render this face since the solid block will occlude it
-            if (blk.transparent && nblk.solid && !nblk.transparent) continue;
-            // If neighbor is transparent (water) and current block is solid opaque,
-            // don't render this face to prevent water showing through solid blocks
-            if (!blk.transparent && blk.solid && nblk.transparent) continue;
           }
           // Pick texture index
           const texIdx = blk.tex[face.face] ?? blk.tex.side;
