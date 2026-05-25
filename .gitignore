@@ -1,58 +1,43 @@
-```
-# HTML-specific build artifacts (if any)
-*.min.js
-*.min.css
-*.bundle.js
-dist/
-build/
+# Compiled and build artifacts
+*.pyc
+__pycache__/
+*.o
+*.obj
+*.class
+*.exe
+*.dll
+*.so
+*.a
+*.out
 
 # Dependencies
 node_modules/
-
-# Editor/IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
-*.tmp
-
-# Logs
-*.log
-
-# Environment
+venv/
+.venv/
 .env
 .env.local
 *.env.*
 
-# Coverage reports
-coverage/
-htmlcov/
-*.coverage
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+*.swo
 
-# OS files
+# Editors
+.vscode/
+.idea/
+
+# System files
 .DS_Store
 Thumbs.db
 
-# Python artifacts (if Python files exist)
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-*.so
-
-# Virtual environments
-venv/
-.venv/
-env/
-ENV/
-
-# Testing
-.pytest_cache/
-.mypy_cache/
+# Coverage
+coverage/
+htmlcov/
 .coverage
 
-# Compression files
+# Compressed files
 *.zip
 *.gz
 *.tar
@@ -75,46 +60,3 @@ ENV/
 *.tar.bz2
 *.tar.xz
 *.tar.zst
-
-# Java/Maven/Gradle
-target/
-.gradle/
-*.class
-*.jar
-*.war
-*.ear
-
-# C/C++
-*.o
-*.obj
-*.a
-*.lib
-*.so
-*.dll
-*.exe
-*.out
-
-# Go
-*.exe
-*.test
-*.prof
-
-# Rust
-target/
-*.rs.bk
-
-# Julia
-.julia/
-julia-*/
-
-# Zig
-zig-cache/
-zig-out/
-
-# Temporary files
-*.tmp
-*~
-\#*\#
-/.emacs.desktop
-/.emacs.desktop.lock
-```
