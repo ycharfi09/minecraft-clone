@@ -935,6 +935,7 @@ addEventListener('keydown', e=>{
 });
 
 let locked = false;
+let gameStarted = false;
 
 function setupEventListeners() {
   if (!canvas) return;
@@ -944,7 +945,8 @@ function setupEventListeners() {
   });
   document.addEventListener('pointerlockchange', ()=>{
     locked = document.pointerLockElement===canvas;
-    document.getElementById('menu').style.display = locked?'none':'flex';
+    const menu = document.getElementById('menu');
+    if (menu) menu.style.display = locked?'none':'flex';
     if (locked && !gameStarted) {
       startGame();
     }
@@ -1376,7 +1378,6 @@ addEventListener('resize', ()=>{
 });
 
 // ---------- Boot ----------
-let gameStarted = false;
 
 function startGame() {
   if (gameStarted) return;
@@ -1397,10 +1398,6 @@ function startGame() {
 
 document.getElementById('start').addEventListener('click', ()=>{
   canvas.requestPointerLock();
-});
-
-document.addEventListener('pointerlockchange', ()=>{
-  locked = document.pointerLockElement===canvas;
 });
 </script>
 </body>
