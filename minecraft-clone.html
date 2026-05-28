@@ -65,6 +65,10 @@
   #death h1{font-size:52px;margin:0 0 10px;color:#fff;text-shadow:3px 3px 0 #000}
   #death button{margin-top:14px;padding:10px 22px;font-family:monospace;font-size:16px;background:#c44;color:#fff;border:2px solid #900;cursor:pointer}
   #death button:hover{background:#d55}
+  #pause-menu{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:30}
+  #pause-menu h1{font-size:42px;margin:0 0 30px;color:#fff;text-shadow:3px 3px 0 #000}
+  #pause-menu button{display:block;width:220px;margin:8px auto;padding:12px 0;font-family:monospace;font-size:16px;background:rgba(60,60,60,.9);color:#fff;border:2px solid #888;cursor:pointer;text-align:center}
+  #pause-menu button:hover{background:rgba(80,80,80,.9);border-color:#aaa}
   #damage-flash{position:fixed;inset:0;background:rgba(255,0,0,.3);pointer-events:none;opacity:0;transition:opacity 0.15s;z-index:15}
   #hearts{position:fixed;bottom:60px;left:50%;transform:translateX(-50%);font-size:20px;text-shadow:1px 1px 0 #000;pointer-events:none;white-space:nowrap;display:none}
   #hearts .full{color:#e22}
@@ -134,6 +138,12 @@
   <h1>You Died!</h1>
   <p id="death-msg"></p>
   <button id="respawn">Respawn</button>
+</div>
+<div id="pause-menu">
+  <h1>Paused</h1>
+  <button id="pause-resume">Resume</button>
+  <button id="pause-settings">Settings</button>
+  <button id="pause-quit">Quit to Menu</button>
 </div>
 <div id="inv-overlay">
   <div id="inv-container">
@@ -909,7 +919,7 @@ function chunkKey(cx,cz){ return cx+','+cz; }
 function biomeAt(wx,wz){
   const t = fbm(wx*0.004, wz*0.004, SEED+100, 3);
   const m = fbm(wx*0.005+100, wz*0.005-100, SEED+200, 3);
-  if (t > 0.55 && m < 0.30) return 'desert';
+  if (t > 0.40 && m < 0.40) return 'desert';
   if (t < 0.2 && m < 0.3) return 'snow';
   if (m > 0.25) return 'forest';
   return 'plains';
@@ -920,7 +930,7 @@ function heightAt(wx,wz){
   const m = fbm(wx*0.005+100, wz*0.005-100, SEED+200, 3);
   // Continuous biome weights for smooth blending
   const wSnow    = smoothstep(0.1, 0.2, t) * (1 - smoothstep(0.2, 0.35, m));
-  const wDesert  = smoothstep(0.55, 0.65, t) * (1 - smoothstep(0.2, 0.30, m));
+  const wDesert  = smoothstep(0.40, 0.55, t) * (1 - smoothstep(0.25, 0.40, m));
   const wForest  = smoothstep(0.15, 0.35, m) * (1 - wSnow) * (1 - wDesert);
   const wPlains  = 1 - wSnow - wDesert - wForest;
   // Biome height modifiers (gentle)
@@ -1319,6 +1329,14 @@ addEventListener('keydown', e=>{
   }
   // If chat is open, don't process game keys
   if (chatOpen) return;
+  // ESC: toggle pause menu
+  if (e.code==='Escape'){
+    e.preventDefault();
+    if(paused) resumeGame();
+    else if(gameStarted && !player.dead) pauseGame();
+    return;
+  }
+  if(paused) return;
   keys[e.code]=true;
   if (e.code==='F3'){ e.preventDefault(); debug=!debug; }
   if (e.code==='F5'){ e.preventDefault(); saveGame(); }
@@ -1388,12 +1406,16 @@ addEventListener('keyup', e=>{ keys[e.code]=false; });
 
 let locked = false;
 canvas.addEventListener('click', ()=>{
-  if (!locked) canvas.requestPointerLock();
+  if (!locked && !paused && gameStarted) canvas.requestPointerLock();
 });
 document.addEventListener('pointerlockchange', ()=>{
   locked = document.pointerLockElement===canvas;
   if (!locked) mouseHeld = false;
-  if (!inventoryOpen && !settingsOpen && !gameStarted) document.getElementById('lobby').style.display = locked?'none':'flex';
+  if (!inventoryOpen && !settingsOpen && !paused && !gameStarted) document.getElementById('lobby').style.display = locked?'none':'flex';
+  // Show pause menu when pointer lock is lost during gameplay (ESC pressed)
+  if (!locked && gameStarted && !player.dead && !inventoryOpen && !settingsOpen && !paused){
+    pauseGame();
+  }
 });
 document.addEventListener('mousemove', e=>{
   if (!locked) return;
@@ -2593,15 +2615,6 @@ function createMobMesh(type){
       eye.position.set(s,0.65,0.51); eye.name='eye'; g.add(eye);
     }
   }
-  // Hitbox wireframe
-  const hbW=type==='chooper'?1.0:type==='camel'?1.1:type==='reindeer'?0.8:1.0;
-  const hbH=type==='chooper'?1.0:type==='camel'?2.4:type==='reindeer'?2.5:1.6;
-  const hbD=type==='chooper'?1.0:type==='camel'?1.6:type==='reindeer'?1.2:1.2;
-  const hbY=type==='chooper'?0.5:type==='camel'?1.2:type==='reindeer'?1.25:0.8;
-  const hbGeo=new THREE.EdgesGeometry(new THREE.BoxGeometry(hbW,hbH,hbD));
-  const hbMat=new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0.8});
-  const hb=new THREE.LineSegments(hbGeo,hbMat);
-  hb.position.y=hbY; hb.name='hitbox'; g.add(hb);
   scene.add(g);
   return g;
 }
@@ -2624,39 +2637,39 @@ function updateMobAI(mob, dt){
 
   if (def.hostile && mob.type==='chooper'){
     const isNight = worldTime > 0.75 || worldTime < 0.25;
-    // Mimic block beneath during day
-    if(!isNight && mob.state!=='provoked' && mob.state!=='chase'){
-      const bx=Math.floor(pos.x), bz=Math.floor(pos.z);
-      const by=Math.floor(pos.y-0.01);
-      const blockId=getBlock(bx,by,bz);
-      if(blockId && mob._mimicBlock!==blockId){
-        mob._mimicBlock=blockId;
-        const tex=BLOCKS[blockId]?.tex;
-        const bodyMesh=mob.mesh.children.find(c=>c.name==='body');
-        if(bodyMesh && tex){
-          bodyMesh.material.map=atlasTex;
-          bodyMesh.material.color.setHex(0xffffff);
-          bodyMesh.material.needsUpdate=true;
-          // Apply per-face textures: +x,-x,+y(top),-y(bot),+z,-z all use side except top/bottom
-          const uvAttr=bodyMesh.geometry.getAttribute('uv');
-          const faces=[tex.side,tex.side,tex.top,tex.bot,tex.side,tex.side];
-          for(let f=0;f<6;f++){
-            const tileIdx=faces[f]||0;
-            const u=(tileIdx%ATLAS_W)/ATLAS_W, tv=1-(1+Math.floor(tileIdx/ATLAS_W))/ATLAS_H;
-            for(let vi=0;vi<4;vi++){
-              const idx=f*4+vi;
-              const ou=uvAttr.getX(idx), ov=uvAttr.getY(idx);
-              uvAttr.setXY(idx, u+ou/ATLAS_W, tv+ov/ATLAS_H);
-            }
+    // Always pick up block texture beneath (first spawn or block changed)
+    const bx=Math.floor(pos.x), bz=Math.floor(pos.z);
+    const by=Math.floor(pos.y-0.01);
+    const blockId=getBlock(bx,by,bz);
+    if(blockId && mob._mimicBlock!==blockId){
+      mob._mimicBlock=blockId;
+      const tex=BLOCKS[blockId]?.tex;
+      const bodyMesh=mob.mesh.children.find(c=>c.name==='body');
+      if(bodyMesh && tex){
+        bodyMesh.material.map=atlasTex;
+        bodyMesh.material.color.setHex(0xffffff);
+        bodyMesh.material.needsUpdate=true;
+        const uvAttr=bodyMesh.geometry.getAttribute('uv');
+        const faces=[tex.side,tex.side,tex.top,tex.bot,tex.side,tex.side];
+        for(let f=0;f<6;f++){
+          const tileIdx=faces[f]||0;
+          const u=(tileIdx%ATLAS_W)/ATLAS_W, tv=1-(1+Math.floor(tileIdx/ATLAS_W))/ATLAS_H;
+          for(let vi=0;vi<4;vi++){
+            const idx=f*4+vi;
+            const ou=uvAttr.getX(idx), ov=uvAttr.getY(idx);
+            uvAttr.setXY(idx, u+ou/ATLAS_W, tv+ov/ATLAS_H);
           }
-          uvAttr.needsUpdate=true;
         }
+        uvAttr.needsUpdate=true;
       }
+    }
+    // Disguise during day: stay still, hide eyes
+    if(!isNight && mob.state!=='provoked' && mob.state!=='chase'){
       mob.state='disguise';
       mob.vel.x=0; mob.vel.z=0;
       mob.mesh.children.forEach(c=>{ if(c.name==='eye') c.visible=false; });
     }
-    // Provoked during day: chase the attacker briefly
+    // Provoked: chase the attacker
     else if(mob.state==='provoked'){
       // Provoked: chase player forever until killed
       const dx=player.pos.x-pos.x, dz=player.pos.z-pos.z;
@@ -2668,19 +2681,9 @@ function updateMobAI(mob, dt){
       }
       if(isNight) mob.state='chase'; // becomes full chase at night
     }
-    // Night: active chaser
+    // Night: active chaser (keep block texture, just show eyes)
     if(isNight){
       mob.mesh.children.forEach(c=>{ if(c.name==='eye') c.visible=distToPlayer<def.detectionRange||mob.state==='provoked'; });
-      // Reset mimic
-      if(mob._mimicBlock!==undefined){
-        delete mob._mimicBlock;
-        const bodyMesh=mob.mesh.children.find(c=>c.name==='body');
-        if(bodyMesh){
-          bodyMesh.material.map=null;
-          bodyMesh.material.color.setHex(def.bodyColor);
-          bodyMesh.material.needsUpdate=true;
-        }
-      }
       if(distToPlayer<def.detectionRange||mob.state==='provoked'){
         mob.state='chase';
         const dx=player.pos.x-pos.x, dz=player.pos.z-pos.z;
@@ -2696,7 +2699,7 @@ function updateMobAI(mob, dt){
     mob.wanderTimer-=dt;
     if(mob.wanderTimer<=0){
       if(Math.random()<0.3){ mob.state='idle'; mob.vel.x=0; mob.vel.z=0; mob.wanderTimer=2+Math.random()*4; }
-      else{ mob.state='wander'; const a=Math.random()*Math.PI*2; mob.vel.x=Math.cos(a)*def.speed*0.5; mob.vel.z=Math.sin(a)*def.speed*0.5; mob.mesh.rotation.y=a+Math.PI/2; mob.wanderTimer=1+Math.random()*3; }
+      else{ mob.state='wander'; const a=Math.random()*Math.PI*2; mob.vel.x=Math.cos(a)*def.speed*0.5; mob.vel.z=Math.sin(a)*def.speed*0.5; mob.mesh.rotation.y=Math.atan2(Math.cos(a),Math.sin(a)); mob.wanderTimer=1+Math.random()*3; }
     }
     if(distToPlayer<4){
       const dx=pos.x-player.pos.x, dz=pos.z-player.pos.z;
@@ -2855,6 +2858,17 @@ function updatePlayer(dt){
   const nz = player.pos.z + player.vel.z*dt;
   if (!collidesAt(player.pos.x, player.pos.y, nz)) player.pos.z = nz;
   else player.vel.z = 0;
+  // Mob collision: push player out of mobs
+  for(const mob of mobs){
+    const mp=mob.mesh.position;
+    const dx=player.pos.x-mp.x, dz=player.pos.z-mp.z;
+    const dist=Math.sqrt(dx*dx+dz*dz);
+    const minDist=mob.type==='chooper'?0.55:0.45;
+    if(dist<minDist && Math.abs(player.pos.y+0.9-mp.y)<1.2){
+      const push=(minDist-dist)*0.5;
+      if(dist>0.01){ player.pos.x+=dx/dist*push; player.pos.z+=dz/dist*push; }
+    }
+  }
   const ny = player.pos.y + player.vel.y*dt;
   // Record fall start before updating position (capture ground-level Y)
   if (player.onGround && player.gameMode==='survival' && !collidesAt(player.pos.x, ny, player.pos.z)){
@@ -2982,14 +2996,21 @@ function updateChunks(){
       const [cx,cz] = k.split(',').map(Number);
       const dx=cx-pcx, dz=cz-pcz;
       if(dx*dx+dz*dz>RENDER_DIST*RENDER_DIST) continue;
+      // Group chunks into 2x2 regions: max 2 per animal per 4-chunk region
+      const rx=Math.floor(cx/2)*2, rz=Math.floor(cz/2)*2;
       for (const typeName of ['sheep','camel','reindeer']){
-        const td = MOB_TYPES[typeName];
         let count=0;
-        for(const m of mobs){ if(m.type===typeName){ const mcx=Math.floor(m.mesh.position.x/CHUNK_SIZE); const mcz=Math.floor(m.mesh.position.z/CHUNK_SIZE); if(mcx===cx&&mcz===cz)count++; } }
-        if(count>=td.maxPerChunk) continue;
+        for(const m of mobs){
+          if(m.type===typeName){
+            const mcx=Math.floor(m.mesh.position.x/CHUNK_SIZE), mcz=Math.floor(m.mesh.position.z/CHUNK_SIZE);
+            if(Math.floor(mcx/2)*2===rx && Math.floor(mcz/2)*2===rz) count++;
+          }
+        }
+        if(count>=2) continue;
         const lx=Math.floor(Math.random()*CHUNK_SIZE), lz=Math.floor(Math.random()*CHUNK_SIZE);
         const wx=cx*CHUNK_SIZE+lx, wz=cz*CHUNK_SIZE+lz;
         const biome=biomeAt(wx,wz);
+        const td = MOB_TYPES[typeName];
         if(!td.spawnBiomes||!td.spawnBiomes.includes(biome)) continue;
         if(Math.random()>0.15) continue;
         const h=heightAt(wx,wz);
@@ -3205,6 +3226,9 @@ function loop(now){
   frames++; fpsT += dt;
   if (fpsT>0.5){ fps = frames/fpsT; frames=0; fpsT=0; }
 
+  if(paused){ renderer.render(scene, camera); requestAnimationFrame(loop); return; }
+  if(!gameStarted){ requestAnimationFrame(loop); return; }
+
   if (locked){
     updatePlayer(dt);
     updateBreaking(dt);
@@ -3265,6 +3289,37 @@ function loop(now){
   requestAnimationFrame(loop);
 }
 
+// ---------- Pause Menu ----------
+function pauseGame(){
+  paused = true;
+  document.getElementById('pause-menu').style.display = 'flex';
+  document.exitPointerLock();
+}
+function resumeGame(){
+  paused = false;
+  document.getElementById('pause-menu').style.display = 'none';
+  if(gameStarted && !player.dead) canvas.requestPointerLock();
+}
+document.getElementById('pause-resume').addEventListener('click', resumeGame);
+document.getElementById('pause-settings').addEventListener('click', ()=>{
+  document.getElementById('pause-menu').style.display = 'none';
+  openSettings();
+});
+document.getElementById('pause-quit').addEventListener('click', function(){
+  quitGame();
+});
+
+function quitGame(){
+  try{ saveGame(); }catch(e){}
+  window.location = window.location.href;
+}
+// Resume from settings also resumes game
+const _origCloseSettings = closeSettings;
+closeSettings = function(){
+  _origCloseSettings();
+  if(paused){ paused = false; document.getElementById('pause-menu').style.display = 'none'; }
+};
+
 // ---------- Settings ----------
 let settingsOpen = false;
 let mouseSens = 0.0025;
@@ -3306,6 +3361,7 @@ addEventListener('resize', ()=>{
 // MULTIPLAYER
 // ============================================================
 let gameStarted = false;
+let paused = false;
 let mpMode = 'none'; // 'none' | 'host' | 'guest'
 let mpPeer = null;
 let mpConns = {};   // {peerId: DataConnection}
