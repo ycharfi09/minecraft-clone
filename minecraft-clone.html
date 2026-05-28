@@ -187,6 +187,15 @@
     <label>Render Distance <input type="range" id="opt-render" min="2" max="24" value="4"><span class="val" id="val-render">4</span></label>
     <label>Mouse Sensitivity <input type="range" id="opt-sens" min="1" max="10" value="5"><span class="val" id="val-sens">5</span></label>
     <label>FOV <input type="range" id="opt-fov" min="50" max="110" value="75"><span class="val" id="val-fov">75</span></label>
+    <label>Graphics Quality
+      <select id="opt-quality" style="margin-left:8px;padding:4px 8px;font-family:monospace;font-size:13px;background:rgba(40,40,40,.9);color:#fff;border:1px solid #888">
+        <option value="ultra">Ultra</option>
+        <option value="high">High</option>
+        <option value="normal" selected>Normal</option>
+        <option value="low">Low</option>
+        <option value="potato">Potato</option>
+      </select>
+    </label>
     <label id="opt-daylen-row">Day Length (s) <input type="range" id="opt-daylen" min="60" max="600" value="240" step="30"><span class="val" id="val-daylen">240</span></label>
     <button class="close-btn" id="settings-close">Close</button>
   </div>
@@ -909,6 +918,19 @@ const CHUNK_SIZE = 16;
 const WORLD_HEIGHT = 80;
 const SEA_LEVEL = 28;
 let RENDER_DIST = 4;
+let chunkRebuildLimit = 3;
+let fogMult = 1.0;
+let fogNear = 30;
+let lightMult = 0.85;
+
+const QUALITY_PRESETS = {
+  ultra:   { pixelRatio:99, renderDist:8,  fogMult:1.5, fogNear:50, lightMult:1.3, chunkRebuild:6, shadows:true  },
+  high:    { pixelRatio:2,  renderDist:6,  fogMult:1.2, fogNear:40, lightMult:1.0, chunkRebuild:4, shadows:true  },
+  normal:  { pixelRatio:1.5,renderDist:4,  fogMult:1.0, fogNear:30, lightMult:0.85,chunkRebuild:3, shadows:false },
+  low:     { pixelRatio:1,  renderDist:3,  fogMult:0.7, fogNear:20, lightMult:0.7, chunkRebuild:2, shadows:false },
+  potato:  { pixelRatio:0.5,renderDist:2,  fogMult:0.4, fogNear:8,  lightMult:0.5, chunkRebuild:1, shadows:false }
+};
+let qualityPreset = 'normal';
 
 let SEED = Math.floor(Math.random()*1e9);
 const chunks = new Map(); // key "cx,cz" -> {blocks, mesh, dirty}
@@ -1178,6 +1200,7 @@ function buildChunkMesh(cx,cz){
     const m = new THREE.Mesh(geo, mat);
     m.renderOrder = transparent ? 1 : 0;
     m.frustumCulled = true;
+    m.receiveShadow = true;
     group.add(m);
   }
   makeMesh(positions,normals,uvs,indices,false);
@@ -1198,6 +1221,8 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0x88bbee);
 renderer.sortObjects = true;
 renderer.autoClear = true;
+renderer.shadowMap.enabled = false;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0x88bbee, 40, RENDER_DIST*CHUNK_SIZE);
@@ -1210,7 +1235,18 @@ const hemi = new THREE.HemisphereLight(0xbcd7ff, 0x3a3020, 0.6);
 scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xffffff, 0.9);
 sun.position.set(50,100,30);
+sun.castShadow = false;
+sun.shadow.mapSize.width = 1024;
+sun.shadow.mapSize.height = 1024;
+sun.shadow.camera.near = 0.5;
+sun.shadow.camera.far = 200;
+sun.shadow.camera.left = -60;
+sun.shadow.camera.right = 60;
+sun.shadow.camera.top = 60;
+sun.shadow.camera.bottom = -60;
+sun.shadow.bias = -0.001;
 scene.add(sun);
+scene.add(sun.target);
 const moon = new THREE.DirectionalLight(0x6070a0, 0.25);
 moon.position.set(-50,80,-30);
 scene.add(moon);
@@ -2615,6 +2651,8 @@ function createMobMesh(type){
       eye.position.set(s,0.65,0.51); eye.name='eye'; g.add(eye);
     }
   }
+  // Enable shadow casting for all mesh children
+  g.traverse(child=>{ if(child.isMesh){ child.castShadow=true; child.receiveShadow=true; } });
   scene.add(g);
   return g;
 }
@@ -2733,6 +2771,14 @@ function updateMobs(dt){
     const nx=pos.x+mob.vel.x*dt, nz=pos.z+mob.vel.z*dt;
     if(!isSolid(Math.floor(nx),Math.floor(pos.y),Math.floor(pos.z))) pos.x=nx; else{ mob.vel.x=0; if(mob.onGround){ mob.vel.y=7; mob.vel.x*=0.5; } }
     if(!isSolid(Math.floor(pos.x),Math.floor(pos.y),Math.floor(nz))) pos.z=nz; else{ mob.vel.z=0; if(mob.onGround){ mob.vel.y=7; mob.vel.z*=0.5; } }
+    // Proactive jump: if blocked ahead at feet but clear at head, jump
+    if(mob.onGround && (Math.abs(mob.vel.x)>0.1||Math.abs(mob.vel.z)>0.1)){
+      const aheadX=Math.floor(pos.x+Math.sign(mob.vel.x)*0.6);
+      const aheadZ=Math.floor(pos.z+Math.sign(mob.vel.z)*0.6);
+      if(isSolid(aheadX,Math.floor(pos.y),aheadZ) && !isSolid(aheadX,Math.floor(pos.y)+1,aheadZ)){
+        mob.vel.y=7;
+      }
+    }
     const ny=pos.y+mob.vel.y*dt;
     if(!isSolid(Math.floor(pos.x),Math.floor(ny),Math.floor(pos.z))){ pos.y=ny; mob.onGround=false; }
     else{ if(mob.vel.y<0)mob.onGround=true; mob.vel.y=0; }
@@ -2758,7 +2804,7 @@ function attackMob(mob){
   mob.health-=damage;
   // Hit flash
   mob.hitFlash=0.15;
-  const flashColor=mob.type==='sheep'?0xff3333:0xffffff;
+  const flashColor=0xff3333;
   mob.mesh.children.forEach(c=>{
     if(c.material && c.name!=='eye'){
       c._origColor=c.material.color.getHex();
@@ -2967,7 +3013,7 @@ function updateChunks(){
   // Rebuild a few dirty per frame
   let rebuilt = 0;
   for (const [k,ch] of chunks){
-    if (ch.dirty && rebuilt<3){
+    if (ch.dirty && rebuilt<chunkRebuildLimit){
       const [cx,cz] = k.split(',').map(Number);
       const dx=cx-pcx, dz=cz-pcz;
       if (dx*dx+dz*dz <= (RENDER_DIST+0.5)*(RENDER_DIST+0.5)){
@@ -3028,8 +3074,10 @@ function updateSky(dt){
   worldTime = (worldTime + dt/dayLength) % 1;
   const sunAngle = worldTime*Math.PI*2 - Math.PI/2;
   const sunY = Math.sin(sunAngle), sunX = Math.cos(sunAngle);
-  sun.position.set(sunX*100, sunY*100, 20);
-  moon.position.set(-sunX*100, -sunY*100, -20);
+  sun.position.set(camera.position.x+sunX*100, camera.position.y+sunY*100, camera.position.z+20);
+  sun.target.position.set(camera.position.x, camera.position.y, camera.position.z);
+  sun.target.updateMatrixWorld();
+  moon.position.set(camera.position.x-sunX*100, camera.position.y-sunY*100, camera.position.z-20);
   sunMesh.position.copy(camera.position).add(new THREE.Vector3(sunX*200, sunY*200, 40));
   moonMesh.position.copy(camera.position).add(new THREE.Vector3(-sunX*200, -sunY*200, -40));
 
@@ -3040,10 +3088,10 @@ function updateSky(dt){
   const skyB = 0.2 + day*0.65 + dusk*0.2;
   renderer.setClearColor(new THREE.Color(skyR, skyG, skyB));
   scene.fog.color.setRGB(skyR, skyG, skyB);
-  sun.intensity = 0.2 + day*0.9;
-  moon.intensity = 0.1 + Math.max(0,-sunY)*0.3;
-  hemi.intensity = 0.25 + day*0.5;
-  ambient.intensity = 0.2 + day*0.15 + Math.max(0,-sunY)*0.1;
+  sun.intensity = (0.2 + day*0.9) * lightMult;
+  moon.intensity = (0.1 + Math.max(0,-sunY)*0.3) * lightMult;
+  hemi.intensity = (0.25 + day*0.5) * lightMult;
+  ambient.intensity = (0.2 + day*0.15 + Math.max(0,-sunY)*0.1) * lightMult;
   stars.material.opacity = Math.max(0, -sunY*1.5);
 }
 
@@ -3149,7 +3197,7 @@ function saveGame(){
     smelterOutput: smelterOutput,
     smelterProgress: smelterProgress,
     smelterFuelLeft: smelterFuelLeft,
-    settings: { renderDist: RENDER_DIST, mouseSens: mouseSens, fov: camera.fov, dayLength: dayLength },
+    settings: { renderDist: RENDER_DIST, mouseSens: mouseSens, fov: camera.fov, dayLength: dayLength, qualityPreset: qualityPreset },
     mobs: mobs.map(m=>({type:m.type,pos:[m.mesh.position.x,m.mesh.position.y,m.mesh.position.z],health:m.health,state:m.state})),
     chunks: {}
   };
@@ -3204,6 +3252,11 @@ function loadGame(){
       document.getElementById('opt-sens').value = Math.round(mouseSens/0.0005); document.getElementById('val-sens').textContent = Math.round(mouseSens/0.0005);
       document.getElementById('opt-fov').value = camera.fov; document.getElementById('val-fov').textContent = camera.fov;
       document.getElementById('opt-daylen').value = dayLength; document.getElementById('val-daylen').textContent = dayLength;
+      if(data.settings.qualityPreset){
+        qualityPreset = data.settings.qualityPreset;
+        document.getElementById('opt-quality').value = qualityPreset;
+        applyQuality();
+      }
     }
     // Restore mobs
     if(data.mobs){
@@ -3245,7 +3298,22 @@ function loop(now){
         const a=Math.random()*Math.PI*2, d=10+Math.random()*15;
         const sx=player.pos.x+Math.cos(a)*d, sz=player.pos.z+Math.sin(a)*d;
         const sh=heightAt(Math.floor(sx),Math.floor(sz));
-        if(sh>=SEA_LEVEL&&!isSolid(Math.floor(sx),sh+1,Math.floor(sz))) spawnMob('chooper',Math.floor(sx)+0.5,sh+1,Math.floor(sz)+0.5);
+        const fsx=Math.floor(sx), fsz=Math.floor(sz);
+        // Try spawning on top of block
+        if(sh>=SEA_LEVEL&&!isSolid(fsx,sh+1,fsz)){
+          spawnMob('chooper',fsx+0.5,sh+1,fsz+0.5);
+        }
+        // Also try spawning on side of adjacent blocks (walls, cactus, pumpkins etc.)
+        else if(sh>=SEA_LEVEL){
+          for(const [ox,oz] of [[1,0],[-1,0],[0,1],[0,-1]]){
+            const bx=fsx+ox, bz=fsz+oz;
+            const bh=heightAt(bx,bz);
+            if(bh>=SEA_LEVEL && isSolid(bx,bh,bz) && !isSolid(fsx,bh,fsz)){
+              spawnMob('chooper',fsx+0.5,bh+0.5,fsz+0.5);
+              break;
+            }
+          }
+        }
       }
     }
     updateSmelter(dt);
@@ -3281,8 +3349,8 @@ function loop(now){
     scene.fog.far = 40;
   } else {
     scene.fog.color.setHex(0x87CEEB); // Sky blue fog
-    scene.fog.near = 20;
-    scene.fog.far = RENDER_DIST * CHUNK_SIZE;
+    scene.fog.far = RENDER_DIST * CHUNK_SIZE * fogMult;
+    scene.fog.near = fogNear;
   }
   
   renderer.render(scene, camera);
@@ -3349,6 +3417,27 @@ bindSlider('opt-render', 'val-render', v=>{ RENDER_DIST = v; });
 bindSlider('opt-sens', 'val-sens', v=>{ mouseSens = v * 0.0005; });
 bindSlider('opt-fov', 'val-fov', v=>{ camera.fov = v; camera.updateProjectionMatrix(); });
 bindSlider('opt-daylen', 'val-daylen', v=>{ dayLength = v; });
+
+function applyQuality(){
+  const q = QUALITY_PRESETS[qualityPreset];
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, q.pixelRatio));
+  RENDER_DIST = q.renderDist;
+  document.getElementById('opt-render').value = RENDER_DIST;
+  document.getElementById('val-render').textContent = RENDER_DIST;
+  fogMult = q.fogMult;
+  fogNear = q.fogNear;
+  lightMult = q.lightMult;
+  chunkRebuildLimit = q.chunkRebuild;
+  scene.fog.far = RENDER_DIST * CHUNK_SIZE * fogMult;
+  scene.fog.near = fogNear;
+  // Shadows
+  renderer.shadowMap.enabled = q.shadows;
+  sun.castShadow = q.shadows;
+}
+document.getElementById('opt-quality').addEventListener('change', e=>{
+  qualityPreset = e.target.value;
+  applyQuality();
+});
 
 // ---------- Resize ----------
 addEventListener('resize', ()=>{
