@@ -49,6 +49,26 @@
   .lobby-status{margin-top:10px;font-size:13px;color:#aaa;min-height:18px}
   .lobby-step{display:none;flex-direction:column;align-items:center}
   .lobby-step.active{display:flex}
+  #world-list{width:400px;max-height:300px;overflow-y:auto;margin:10px 0;background:rgba(40,40,40,.9);border:2px solid #555;border-radius:4px}
+  .world-entry{display:flex;align-items:center;padding:10px 12px;border-bottom:1px solid #333;cursor:pointer}
+  .world-entry:hover{background:rgba(80,80,80,.6)}
+  .world-entry:last-child{border-bottom:none}
+  .world-info{flex:1;text-align:left}
+  .world-info .wname{font-size:15px;color:#fff}
+  .world-info .wdetail{font-size:11px;color:#888;margin-top:2px}
+  .world-del{padding:4px 10px;font-family:monospace;font-size:12px;background:#633;color:#fff;border:1px solid #933;cursor:pointer;margin-left:8px}
+  .world-del:hover{background:#844}
+  #world-list{width:420px;max-height:300px;overflow-y:auto;margin:12px 0;background:rgba(40,40,40,.9);border:2px solid #555;border-radius:4px}
+  .world-entry{display:flex;align-items:center;padding:10px 12px;border-bottom:1px solid #333;cursor:pointer;transition:background .15s}
+  .world-entry:hover{background:rgba(80,80,80,.7)}
+  .world-entry:last-child{border-bottom:none}
+  .world-info{flex:1;text-align:left}
+  .wname{font-size:15px;color:#fff;font-weight:bold}
+  .wdetail{font-size:11px;color:#888;margin-top:2px}
+  .world-del{padding:5px 10px;font-family:monospace;font-size:12px;cursor:pointer;background:#633;color:#fff;border:1px solid #900;border-radius:3px}
+  .world-del:hover{background:#844}
+  .btn-create-world{margin-top:10px;padding:10px 22px;font-family:monospace;font-size:16px;background:#4a4;color:#fff;border:2px solid #060;cursor:pointer}
+  .btn-create-world:hover{background:#5b5}
   #chat-overlay{position:fixed;bottom:60px;left:10px;max-height:220px;overflow-y:auto;z-index:12;pointer-events:none;display:flex;flex-direction:column}
   #chat-overlay p{margin:2px 0;padding:3px 8px;font-family:monospace;font-size:13px;color:#fff;text-shadow:1px 1px 0 #000;background:rgba(0,0,0,.4);border-radius:3px;white-space:nowrap}
   #chat-input-wrap{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);display:none;z-index:13}
@@ -61,6 +81,9 @@
   .inv-slot.has-item{background:rgba(130,130,130,.8)}
   #hud{position:fixed;top:6px;left:8px;font-size:13px;text-shadow:1px 1px 0 #000;line-height:1.4}
   #menu{display:none}
+  #boss-bar{display:none;position:fixed;top:60px;left:50%;transform:translateX(-50%);width:300px;height:20px;background:rgba(0,0,0,0.6);border:2px solid #a030c0;border-radius:4px;z-index:25;overflow:hidden}
+  #boss-fill{height:100%;background:linear-gradient(90deg,#a030c0,#ff40ff);transition:width 0.2s;width:100%}
+  #boss-name{position:fixed;top:40px;left:50%;transform:translateX(-50%);color:#ff40ff;font-size:16px;font-weight:bold;text-shadow:0 0 8px #a030c0;z-index:25;font-family:monospace;display:none}
   #death{position:fixed;inset:0;background:rgba(180,0,0,.6);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:20;text-align:center}
   #death h1{font-size:52px;margin:0 0 10px;color:#fff;text-shadow:3px 3px 0 #000}
   #death button{margin-top:14px;padding:10px 22px;font-family:monospace;font-size:16px;background:#c44;color:#fff;border:2px solid #900;cursor:pointer}
@@ -133,6 +156,8 @@
 <div id="hunger-bar"></div>
 <div id="air-bar"></div>
 <div id="break-bar"><div id="break-fill"></div></div>
+<div id="boss-name"></div>
+<div id="boss-bar"><div id="boss-fill"></div></div>
 <div id="damage-flash"></div>
 <div id="death">
   <h1>You Died!</h1>
@@ -229,6 +254,21 @@
     <button class="lobby-btn" id="btn-start-mp">Start Game</button>
     <button class="lobby-btn secondary" id="btn-cancel-host" style="font-size:12px;padding:4px 14px;margin-top:8px">Cancel</button>
   </div>
+  <!-- Step 4: World list -->
+  <div id="lobby-step4" class="lobby-step">
+    <h1 style="font-size:28px">Select World</h1>
+    <div id="world-list"></div>
+    <button class="lobby-btn" id="btn-create-world">Create New World</button>
+    <button class="lobby-btn secondary" id="btn-worlds-back" style="font-size:12px;padding:4px 14px;margin-top:8px">Back</button>
+  </div>
+  <!-- Step 5: Create world -->
+  <div id="lobby-step5" class="lobby-step">
+    <h1 style="font-size:28px">Create World</h1>
+    <input class="lobby-input" id="world-name-input" placeholder="World Name" maxlength="32" value="New World">
+    <input class="lobby-input" id="world-seed-input" placeholder="Seed (random if empty)" style="margin-top:6px">
+    <button class="lobby-btn" id="btn-play-world" style="margin-top:14px">Create &amp; Play</button>
+    <button class="lobby-btn secondary" id="btn-create-back" style="font-size:12px;padding:4px 14px;margin-top:8px">Back</button>
+  </div>
 </div>
 <div id="chat-overlay"></div>
 <div id="chat-input-wrap">
@@ -274,6 +314,7 @@ const BLOCKS = [
   {name:'Obsidian',    solid:true,  hardness:10.0,tex:{top:34,bot:34,side:34}},
   {name:'Netherrack',  solid:true,  hardness:0.4, tex:{top:35,bot:35,side:35}},
   {name:'Glowstone',   solid:true,  hardness:0.3, tex:{top:36,bot:36,side:36}},
+  {name:'Lava',        solid:false, hardness:100, tex:{top:88,bot:88,side:88}, transparent:true, liquid:true},
   {name:'Copper Ore',  solid:true,  hardness:3.5, tex:{top:37,bot:37,side:37}},
   // --- Items (isItem:true, not placeable) ---
   {name:'Sticks',        isItem:true, tex:{top:38}},
@@ -332,9 +373,204 @@ const BLOCKS = [
   {name:'Full Reindeer',            isItem:true, food:3, tex:{top:85}},
   {name:'Uncooked Reindeer Meat',   isItem:true, food:3, tex:{top:86}},
   {name:'Cooked Reindeer Meat',     isItem:true, food:6, tex:{top:87}},
+  // --- Choop King quest items/blocks ---
+  {name:'Choop Block',        isItem:true, tex:{top:89}},
+  {name:'Portal Map',         isItem:true, tex:{top:90}},
+  {name:'Portal Frame',       solid:true,  hardness:-1,  tex:{top:91,bot:91,side:91}},
+  {name:'Portal',             solid:false, transparent:true, tex:{top:92,bot:92,side:92}},
+  {name:'Choop Grass',        solid:true,  hardness:0.6, tex:{top:93,bot:95,side:94}},
+  {name:'Choop Dirt',         solid:true,  hardness:0.5, tex:{top:94,bot:94,side:94}},
+  {name:'Choop Stone',        solid:true,  hardness:3.0, tex:{top:95,bot:95,side:95}},
+  {name:'Choop Block Placed', solid:true,  hardness:-1,  tex:{top:89,bot:89,side:89}},
+  {name:'Castle Key',         isItem:true, tex:{top:96}},
+  {name:'King Crown',         isItem:true, tex:{top:97}},
 ];
 // Name alias
 for (let i=1;i<BLOCKS.length;i++) B[BLOCKS[i].name.toUpperCase().replace(/ /g,'_')] = i;
+
+// ---------- Chunk Generation Worker ----------
+const _workerCode = `
+'use strict';
+const CHUNK_SIZE=16, WORLD_HEIGHT=128, SEA_LEVEL=28;
+let SEED=0;
+const B={};
+function mulberry32(a){return function(){let t=a+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296}}
+function hashN(x,y,s){ return Math.sin(x*374.17+y*123.83+s*91.1)*43758.5453 % 1; }
+function smoothstep(a,b,c){
+  if (c===undefined) return a*a*(3-2*a);
+  const t = Math.max(0, Math.min(1, (c-a)/(b-a)));
+  return t*t*(3-2*t);
+}
+function valueNoise(x,y,s){
+  const xi=Math.floor(x), yi=Math.floor(y);
+  const xf=x-xi, yf=y-yi;
+  const a=hashN(xi,yi,s), b=hashN(xi+1,yi,s), c=hashN(xi,yi+1,s), d=hashN(xi+1,yi+1,s);
+  const u=smoothstep(xf), v=smoothstep(yf);
+  return a*(1-u)*(1-v)+b*u*(1-v)+c*(1-u)*v+d*u*v;
+}
+function fbm(x,y,s,oct=4){
+  let v=0, amp=1, freq=1, norm=0;
+  for(let i=0;i<oct;i++){ v+=amp*valueNoise(x*freq,y*freq,s+i*17); norm+=amp; amp*=0.5; freq*=2; }
+  return v/norm;
+}
+function biomeAt(wx,wz){
+  const t=fbm(wx*0.004,wz*0.004,SEED+100,3);
+  const m=fbm(wx*0.005+100,wz*0.005-100,SEED+200,3);
+  const s=fbm(wx*0.003+200,wz*0.003+200,SEED+350,3);
+  if(s>0.58) return 'stone_table';
+  if(t>0.40&&m<0.40) return 'desert';
+  if(t<0.2&&m<0.3) return 'snow';
+  if(m>0.25) return 'forest';
+  return 'plains';
+}
+function heightAt(wx,wz){
+  const b=fbm(wx*0.01,wz*0.01,SEED,4);
+  const t=fbm(wx*0.004,wz*0.004,SEED+100,3);
+  const m=fbm(wx*0.005+100,wz*0.005-100,SEED+200,3);
+  const s=fbm(wx*0.003+200,wz*0.003+200,SEED+350,3);
+  const wSnow=smoothstep(0.1,0.2,t)*(1-smoothstep(0.2,0.35,m));
+  const wDesert=smoothstep(0.40,0.55,t)*(1-smoothstep(0.25,0.40,m));
+  const wStoneT=smoothstep(0.52,0.62,s);
+  const wForest=smoothstep(0.15,0.35,m)*(1-wSnow)*(1-wDesert)*(1-wStoneT);
+  const wPlains=Math.max(0,1-wSnow-wDesert-wForest-wStoneT);
+  const hPlains=0, hForest=2, hSnow=8+m*6, hDesert=-2+b*4, hStoneT=28+Math.min(s,0.7)*10;
+  const mod=wPlains*hPlains+wForest*hForest+wSnow*hSnow+wDesert*hDesert+wStoneT*hStoneT;
+  return Math.floor(55+b*12+mod);
+}
+function wy(_){return 0}
+function caveAt(wx,wy,wz){
+  if(wy<2) return false;
+  function tunnelDist(x,y,z,seed,freqXZ,freqY){
+    const offX=valueNoise(x*freqXZ*0.3,z*freqXZ*0.3,seed)*20;
+    const offZ=valueNoise(x*freqXZ*0.3+500,z*freqXZ*0.3+500,seed)*20;
+    const ax=Math.floor(x*freqXZ+offX*freqXZ), ay=Math.floor(y*freqY), az=Math.floor(z*freqXZ+offZ*freqXZ);
+    let minD=999;
+    for(let ox=-1;ox<=1;ox++) for(let oy=-1;oy<=1;oy++) for(let oz=-1;oz<=1;oz++){
+      const cx=ax+ox,cy=ay+oy,cz=az+oz;
+      const hx=hashN(cx,cz,seed)*0.5+0.5, hz=hashN(cx+99,cz+99,seed)*0.5+0.5, hy=hashN(cx+33,cz+33,seed)*0.5+0.5;
+      const px=(cx+hx)/freqXZ-offX, pz=(cz+hz)/freqXZ-offZ, py=(cy+hy)/freqY;
+      const dx=x-px,dy=y-py,dz=z-pz, d=Math.sqrt(dx*dx+dy*dy+dz*dz);
+      if(d<minD) minD=d;
+    }
+    return minD;
+  }
+  if(tunnelDist(wx,wy,wz,SEED+600,0.012,0.02)<4.5&&wy>5&&wy<55) return true;
+  if(tunnelDist(wx,wy,wz,SEED+500,0.02,0.04)<3&&wy<70) return true;
+  if(tunnelDist(wx,wy,wz,SEED+520,0.035,0.05)<2.2&&wy<65) return true;
+  if(fbm(wx*0.015,wy*0.008,SEED+700+wz*0.015,4)>0.6&&wy<40) return true;
+  if(tunnelDist(wx,wy,wz,SEED+800,0.025,0.05)<3.5&&wy>40&&wy<70) return true;
+  return false;
+}
+function placeTree(blocks,x,y,z,rng){
+  const idx2=(a,b,c)=>{if(a<0||a>=CHUNK_SIZE||c<0||c>=CHUNK_SIZE||b<0||b>=WORLD_HEIGHT)return-1;return a+c*CHUNK_SIZE+b*CHUNK_SIZE*CHUNK_SIZE};
+  const trunk=4+Math.floor(rng()*2);
+  for(let k=0;k<trunk;k++){const i=idx2(x,y+k,z);if(i>=0)blocks[i]=B.OAK_LOG;}
+  const topY=y+trunk;
+  for(let dy=-2;dy<=1;dy++){
+    const r=dy<=0?2:1;
+    for(let dx=-r;dx<=r;dx++) for(let dz=-r;dz<=r;dz++){
+      if(Math.abs(dx)===r&&Math.abs(dz)===r&&rng()<0.4) continue;
+      const i=idx2(x+dx,topY+dy,z+dz);
+      if(i>=0&&blocks[i]===0)blocks[i]=B.OAK_LEAVES;
+    }
+  }
+  const i=idx2(x,topY+2,z);if(i>=0)blocks[i]=B.OAK_LEAVES;
+}
+function generateChunk(cx,cz){
+  const blocks=new Uint8Array(CHUNK_SIZE*WORLD_HEIGHT*CHUNK_SIZE);
+  const idx=(x,y,z)=>x+z*CHUNK_SIZE+y*CHUNK_SIZE*CHUNK_SIZE;
+  for(let x=0;x<CHUNK_SIZE;x++){
+    for(let z=0;z<CHUNK_SIZE;z++){
+      const wx=cx*CHUNK_SIZE+x, wz=cz*CHUNK_SIZE+z;
+      const h=heightAt(wx,wz), biome=biomeAt(wx,wz);
+      for(let y=0;y<WORLD_HEIGHT;y++){
+        let id=0;
+        if(y===0) id=B.BEDROCK;
+        else if(y<h-4) id=B.STONE;
+        else if(y<h) id=biome==='desert'?B.SANDSTONE:biome==='stone_table'?B.STONE:B.DIRT;
+        else if(y===h){
+          if(biome==='stone_table') id=B.STONE;
+          else if(h<SEA_LEVEL) id=B.SAND;
+          else if(biome==='desert') id=B.SAND;
+          else if(biome==='snow') id=B.SNOW;
+          else id=B.GRASS;
+        }
+        else if(y<h&&y>=h-3&&h<SEA_LEVEL&&biome!=='desert') id=B.SAND;
+        else if(y<=SEA_LEVEL&&y>h) id=B.WATER;
+        if(id===B.STONE){
+          const r=hashN(wx*13+wy(y),y*7,SEED+300+wz);
+          if(y<30&&r<0.006) id=B.DIAMOND_ORE;
+          else if(y<50&&r<0.012) id=B.GOLD_ORE;
+          else if(y<75&&r<0.018) id=B.IRON_ORE;
+          else{
+            const r2=hashN(wx*17+wy(y),y*11,SEED+400+wz);
+            if(r<0.035&&r2<0.5) id=B.COPPER_ORE;
+            else if(r<0.035) id=B.COAL_ORE;
+          }
+        }
+        if(id!==0&&id!==B.BEDROCK&&id!==B.WATER&&biome!=='stone_table'&&caveAt(wx,y,wz)){
+          id=y<10?B.LAVA:0;
+        }
+        blocks[idx(x,y,z)]=id;
+      }
+    }
+  }
+  const rng=mulberry32(SEED^(cx*73856093)^(cz*19349663));
+  for(let i=0;i<8;i++){
+    const lx=Math.floor(rng()*CHUNK_SIZE), lz=Math.floor(rng()*CHUNK_SIZE);
+    const wx2=cx*CHUNK_SIZE+lx, wz2=cz*CHUNK_SIZE+lz;
+    const h2=heightAt(wx2,wz2), biome2=biomeAt(wx2,wz2);
+    const surface=blocks[idx(lx,h2,lz)];
+    if(biome2==='forest'||biome2==='plains'){
+      if(surface===B.GRASS&&h2>=SEA_LEVEL&&rng()<0.7) placeTree(blocks,lx,h2+1,lz,rng);
+      else if(surface===B.GRASS&&h2>=SEA_LEVEL&&rng()<0.05) blocks[idx(lx,h2+1,lz)]=B.PUMPKIN;
+    } else if(biome2==='desert'){
+      if(surface===B.SAND&&rng()<0.15){
+        const cH=2+Math.floor(rng()*2);
+        for(let k=0;k<cH;k++) if(h2+1+k<WORLD_HEIGHT) blocks[idx(lx,h2+1+k,lz)]=B.CACTUS;
+      }
+    } else if(biome2==='stone_table'){
+      if(surface===B.STONE&&h2>=SEA_LEVEL&&rng()<0.35) blocks[idx(lx,h2,lz)]=rng()<0.5?B.COAL_ORE:B.IRON_ORE;
+    }
+  }
+  for(let i=0;i<4;i++){
+    const gx=Math.floor(rng()*CHUNK_SIZE), gz=Math.floor(rng()*CHUNK_SIZE);
+    const gwx=cx*CHUNK_SIZE+gx, gwz=cz*CHUNK_SIZE+gz;
+    const gh=heightAt(gwx,gwz);
+    if(gh>=SEA_LEVEL) continue;
+    let size=1; const r1=rng(),r2=rng();
+    size=Math.floor(1+15*Math.max(r1,r2));
+    size=Math.max(1,Math.min(16,size));
+    for(let n=0;n<size;n++){
+      const ox=Math.floor(rng()*5)-2, oz=Math.floor(rng()*5)-2;
+      const px=gx+ox, pz=gz+oz;
+      if(px<0||px>=CHUNK_SIZE||pz<0||pz>=CHUNK_SIZE) continue;
+      const pwx=cx*CHUNK_SIZE+px, pwz=cz*CHUNK_SIZE+pz;
+      const ph=heightAt(pwx,pwz);
+      const pidx=idx(px,ph,pz);
+      if(ph<SEA_LEVEL&&pidx>=0&&(blocks[pidx]===B.SAND||blocks[pidx]===B.DIRT||blocks[pidx]===B.SANDSTONE)){
+        blocks[pidx]=B.GRAVEL;
+      }
+    }
+  }
+  return blocks;
+}
+self.onmessage=function(e){
+  const d=e.data;
+  if(d.type==='config'){
+    SEED=d.seed;
+    for(const k in d.blocks) B[k]=d.blocks[k];
+    return;
+  }
+  if(d.type==='generate'){
+    const blocks=generateChunk(d.cx,d.cz);
+    self.postMessage({type:'chunk',cx:d.cx,cz:d.cz,blocks:blocks.buffer},[blocks.buffer]);
+  }
+};
+`;
+const _workerBlob = new Blob([_workerCode], {type:'application/javascript'});
+const chunkWorker = new Worker(URL.createObjectURL(_workerBlob));
+const pendingChunks = new Set();
 
 // ---------- Texture atlas (procedural 16x16) ----------
 const ATLAS_W = 16, ATLAS_H = 16; // 256 slots
@@ -885,6 +1121,107 @@ drawFoodTile(84,140,90,40,'flat');      // Cooked Camel Meat Slice
 drawFoodTile(85,140,90,60,'round');     // Full Reindeer
 drawFoodTile(86,160,100,70,'flat');     // Uncooked Reindeer Meat
 drawFoodTile(87,120,70,30,'flat');      // Cooked Reindeer Meat
+// 88 lava
+drawTile(88,(x,y)=>{
+  const n=rand(x,y,88);
+  const n2=noise2d(x*0.5,y*0.5,88)*0.5+0.5;
+  const r=180+n*60+n2*40;
+  const g=60+n*40+n2*30;
+  const b=10+n*15;
+  return [Math.min(255,r),Math.min(255,g),b,220];
+});
+// 89 choop block - dark purple with glowing magenta veins
+drawTile(89,(x,y)=>{
+  const n=rand(x,y,89);
+  const base=[60+n*20, 20+n*10, 80+n*25];
+  const vein = (Math.abs((x+y)%8-4)<1 || Math.abs((x-y+8)%8-4)<1) && n<0.6;
+  if(vein) return [200+n*55, 80+n*40, 255];
+  if(rand(x,y,90)<0.08) return [180,100,240];
+  return [base[0],base[1],base[2]];
+});
+// 90 portal map - parchment with glowing portal symbol
+drawTile(90,(x,y)=>{
+  const n=rand(x,y,90);
+  const parch=[210+n*20, 190+n*15, 150+n*15];
+  if(x<=1||x>=14||y<=1||y>=14) return [140,100,60];
+  const dx=x-7.5, dy=y-7.5;
+  const d=Math.sqrt(dx*dx+dy*dy);
+  if(d<4 && d>2.5) return [120+n*40, 60+n*30, 220];
+  if(d<2.5 && d>1.5) return [160+n*40, 100+n*30, 255];
+  if(d<1.5) return [200+n*55, 150+n*40, 255];
+  if((x===7||x===8)&&(y===2||y===13)) return [180,40,40];
+  return [parch[0],parch[1],parch[2]];
+});
+// 91 portal frame - dark stone with purple crystal inlays
+drawTile(91,(x,y)=>{
+  const n=rand(x,y,91);
+  const base=[30+n*20, 25+n*15, 40+n*20];
+  if(rand(x,y,92)<0.2) return [140+n*40, 60+n*20, 200+n*55];
+  if(x<=0||x>=15||y<=0||y>=15) return [20+n*10, 15+n*8, 30+n*10];
+  return [base[0],base[1],base[2]];
+});
+// 92 portal - swirling purple/blue void
+drawTile(92,(x,y)=>{
+  const n=rand(x,y,92);
+  const n2=noise2d(x*0.3,y*0.3,92)*0.5+0.5;
+  const swirl=Math.sin(x*0.8+y*0.6+n2*6.28)*0.5+0.5;
+  const r=60+swirl*120+n*40;
+  const g=20+swirl*40+n*20;
+  const b=120+swirl*135+n*30;
+  return [Math.min(255,r),Math.min(255,g),Math.min(255,b),200];
+});
+// 93 choop grass top - alien purple-green
+drawTile(93,(x,y)=>{
+  const n=rand(x,y,93);
+  return [40+n*30, 80+n*40, 50+n*25];
+});
+// 94 choop grass side / choop dirt - purple dirt with alien grass strip
+drawTile(94,(x,y)=>{
+  if(y<3){ const n=rand(x,y,93); return [40+n*30, 80+n*40, 50+n*25]; }
+  const n=rand(x,y,94); return [80+n*20, 50+n*15, 70+n*20];
+});
+// 95 choop stone - dark purple-grey
+drawTile(95,(x,y)=>{
+  const n=rand(x,y,95);
+  const v=70+n*40;
+  return [v*1.1, v*0.8, v*1.3];
+});
+// 96 castle key - golden key shape
+drawTile(96,(x,y)=>{
+  const n=rand(x,y,96);
+  if(y>=2&&y<=5&&x>=6&&x<=9){
+    // Key bow (top ring)
+    const dx=x-7.5, dy=y-3.5; const d=Math.sqrt(dx*dx+dy*dy);
+    if(d<2.2&&d>1.2) return [220+n*35, 180+n*30, 40+n*20];
+    if(d<1.2) return [0,0,0,0];
+  }
+  if(y>=5&&y<=13&&x>=7&&x<=8){
+    // Key shaft
+    return [210+n*30, 170+n*25, 35+n*15];
+  }
+  if(y>=11&&y<=13&&x>=8&&x<=12){
+    // Key teeth
+    if((y===11&&x<=10)||(y===13)||(x===12&&y<=12)) return [200+n*30, 160+n*25, 30+n*15];
+  }
+  return [0,0,0,0];
+});
+// 97 king crown - golden crown with gems
+drawTile(97,(x,y)=>{
+  const n=rand(x,y,97);
+  if(y>=6){
+    // Crown base band
+    if(y<=8) return [230+n*25, 190+n*25, 50+n*20];
+    // Crown body
+    if(y<=12&&x>=2&&x<=13){
+      const isPeak=(x===3||x===7||x===12)&&(y>=10);
+      if(isPeak) return [240+n*15, 200+n*20, 60+n*15];
+      if(y<=10) return [225+n*30, 185+n*25, 45+n*20];
+    }
+    // Gems
+    if(y>=7&&y<=9&&(x===4||x===8||x===11)) return [80+n*30, 200+n*40, 220+n*30];
+  }
+  return [0,0,0,0];
+});
 
 const atlasTex = new THREE.CanvasTexture(atlas);
 atlasTex.magFilter = THREE.NearestFilter;
@@ -915,7 +1252,7 @@ function fbm(x,y,s,oct=4){
 
 // ---------- World ----------
 const CHUNK_SIZE = 16;
-const WORLD_HEIGHT = 80;
+const WORLD_HEIGHT = 128;
 const SEA_LEVEL = 28;
 let RENDER_DIST = 4;
 let chunkRebuildLimit = 3;
@@ -933,14 +1270,103 @@ const QUALITY_PRESETS = {
 let qualityPreset = 'normal';
 
 let SEED = Math.floor(Math.random()*1e9);
-const chunks = new Map(); // key "cx,cz" -> {blocks, mesh, dirty}
-const modifiedChunks = new Map(); // key -> Uint8Array (modified blocks persist across deload)
+let chunks = new Map(); // key "cx,cz" -> {blocks, mesh, dirty}
+let modifiedChunks = new Map(); // key -> Uint8Array (modified blocks persist across deload)
+
+// Dimension system for Choop King quest
+const dimensions = {
+  overworld: { chunks: new Map(), modifiedChunks: new Map() },
+  choopLand: { chunks: new Map(), modifiedChunks: new Map() },
+  colosseum: { chunks: new Map(), modifiedChunks: new Map() },
+};
+
+function enterDimension(dimName){
+  if(questState.currentDimension === dimName) return;
+  // Save current dimension state
+  dimensions[questState.currentDimension].chunks = new Map(chunks);
+  dimensions[questState.currentDimension].modifiedChunks = new Map(modifiedChunks);
+  // Clear current scene chunks
+  for(const ch of chunks.values()){
+    if(ch.mesh){ scene.remove(ch.mesh); ch.mesh.traverse(o=>{if(o.geometry)o.geometry.dispose()});}
+  }
+  // Swap to new dimension
+  chunks = dimensions[dimName].chunks;
+  modifiedChunks = dimensions[dimName].modifiedChunks;
+  questState.currentDimension = dimName;
+  // Clear mobs
+  for(const m of mobs){ scene.remove(m.mesh); }
+  mobs.length = 0;
+  // Teleport player
+  if(dimName === 'choopLand'){
+    player.pos.set(0.5, 80, 0.5);
+    player.vel.set(0,0,0);
+    generateReturnPortal(0, 79, 0);
+  } else if(dimName === 'overworld'){
+    if(questState.portalX!==null){
+      const px=questState.portalX, pz=questState.portalZ;
+      const sh=heightAt(px,pz);
+      player.pos.set(px+0.5, sh+2, pz+0.5);
+    } else {
+      player.pos.set(0.5, 60, 0.5);
+    }
+    player.vel.set(0,0,0);
+  } else if(dimName === 'colosseum'){
+    player.pos.set(0.5, 20, 0.5);
+    player.vel.set(0,0,0);
+  }
+  // Force chunk generation for new position
+  updateChunksSync();
+  for(const [k] of chunks){
+    const [cx,cz] = k.split(',').map(Number);
+    buildChunkMesh(cx,cz);
+  }
+  flash('Entering '+dimName+'...');
+}
+
+function generateReturnPortal(wx, wy, wz){
+  for(let dx=-2; dx<=2; dx++) setBlock(wx+dx, wy, wz, B.PORTAL_FRAME);
+  for(let dy=1; dy<=5; dy++){
+    setBlock(wx-2, wy+dy, wz, B.PORTAL_FRAME);
+    setBlock(wx+2, wy+dy, wz, B.PORTAL_FRAME);
+  }
+  for(let dx=-2; dx<=2; dx++) setBlock(wx+dx, wy+5, wz, B.PORTAL_FRAME);
+  // Pre-activated portal interior
+  for(let dx=-1; dx<=1; dx++) for(let dy=1; dy<=4; dy++) setBlock(wx+dx, wy+dy, wz, B.PORTAL);
+}
+
+function generatePortalStructure(wx, wz){
+  const baseY = heightAt(wx, wz) + 1;
+  // Base platform
+  for(let dx=-2; dx<=2; dx++) setBlock(wx+dx, baseY, wz, B.PORTAL_FRAME);
+  // Left pillar
+  for(let dy=1; dy<=5; dy++) setBlock(wx-2, baseY+dy, wz, B.PORTAL_FRAME);
+  // Right pillar
+  for(let dy=1; dy<=5; dy++) setBlock(wx+2, baseY+dy, wz, B.PORTAL_FRAME);
+  // Top bar
+  for(let dx=-2; dx<=2; dx++) setBlock(wx+dx, baseY+5, wz, B.PORTAL_FRAME);
+  // Top decoration
+  for(let dx=-1; dx<=1; dx++) setBlock(wx+dx, baseY+6, wz, B.PORTAL_FRAME);
+}
+
+function activatePortal(){
+  const px = questState.portalX, pz = questState.portalZ;
+  const baseY = heightAt(px, pz) + 1;
+  for(let dx=-1; dx<=1; dx++){
+    for(let dy=1; dy<=4; dy++){
+      setBlock(px+dx, baseY+dy, pz, B.PORTAL);
+    }
+  }
+  questState.portalActivated = true;
+  flash('The Portal activates with a blinding purple light!');
+}
 
 function chunkKey(cx,cz){ return cx+','+cz; }
 
 function biomeAt(wx,wz){
   const t = fbm(wx*0.004, wz*0.004, SEED+100, 3);
   const m = fbm(wx*0.005+100, wz*0.005-100, SEED+200, 3);
+  const s = fbm(wx*0.003+200, wz*0.003+200, SEED+350, 3);
+  if (s > 0.58) return 'stone_table';
   if (t > 0.40 && m < 0.40) return 'desert';
   if (t < 0.2 && m < 0.3) return 'snow';
   if (m > 0.25) return 'forest';
@@ -950,25 +1376,101 @@ function heightAt(wx,wz){
   const b = fbm(wx*0.01, wz*0.01, SEED, 4);
   const t = fbm(wx*0.004, wz*0.004, SEED+100, 3);
   const m = fbm(wx*0.005+100, wz*0.005-100, SEED+200, 3);
+  const s = fbm(wx*0.003+200, wz*0.003+200, SEED+350, 3);
   // Continuous biome weights for smooth blending
   const wSnow    = smoothstep(0.1, 0.2, t) * (1 - smoothstep(0.2, 0.35, m));
   const wDesert  = smoothstep(0.40, 0.55, t) * (1 - smoothstep(0.25, 0.40, m));
-  const wForest  = smoothstep(0.15, 0.35, m) * (1 - wSnow) * (1 - wDesert);
-  const wPlains  = 1 - wSnow - wDesert - wForest;
-  // Biome height modifiers (gentle)
+  const wStoneT  = smoothstep(0.52, 0.62, s);
+  const wForest  = smoothstep(0.15, 0.35, m) * (1 - wSnow) * (1 - wDesert) * (1 - wStoneT);
+  const wPlains  = Math.max(0, 1 - wSnow - wDesert - wForest - wStoneT);
+  // Biome height modifiers
   const hPlains = 0;
   const hForest = 2;
   const hSnow   = 8 + m * 6;
   const hDesert = -2 + b * 4;
-  const mod = wPlains*hPlains + wForest*hForest + wSnow*hSnow + wDesert*hDesert;
-  return Math.floor(30 + b*12 + mod);
+  const hStoneT = 28 + Math.min(s, 0.7) * 10;
+  const mod = wPlains*hPlains + wForest*hForest + wSnow*hSnow + wDesert*hDesert + wStoneT*hStoneT;
+  return Math.floor(55 + b*12 + mod);
 }
 function caveAt(wx,wy,wz){
-  const n = fbm(wx*0.06, wy*0.12, SEED+500+wz*0.06, 3);
-  return n > 0.62 && wy > 2 && wy < SEA_LEVEL-2;
+  if (wy < 2) return false;
+  // Helper: distance from a 3D point to a curved tunnel spine
+  function tunnelDist(x,y,z, seed, freqXZ, freqY, radius){
+    // The spine curves through space via noise offset
+    const offX = valueNoise(x*freqXZ*0.3, z*freqXZ*0.3, seed)*20;
+    const offZ = valueNoise(x*freqXZ*0.3+500, z*freqXZ*0.3+500, seed)*20;
+    // Quantize position along tunnel axis
+    const ax = Math.floor(x*freqXZ + offX*freqXZ);
+    const ay = Math.floor(y*freqY);
+    const az = Math.floor(z*freqXZ + offZ*freqXZ);
+    // Find nearest tunnel segment center
+    let minD = 999;
+    for(let ox=-1;ox<=1;ox++) for(let oy=-1;oy<=1;oy++) for(let oz=-1;oz<=1;oz++){
+      const cx=ax+ox, cy=ay+oy, cz=az+oz;
+      const hx = hashN(cx, cz, seed)*0.5+0.5;
+      const hz = hashN(cx+99, cz+99, seed)*0.5+0.5;
+      const hy = hashN(cx+33, cz+33, seed)*0.5+0.5;
+      const px = (cx+hx)/freqXZ - offX;
+      const pz = (cz+hz)/freqXZ - offZ;
+      const py = (cy+hy)/freqY;
+      const dx=x-px, dy=y-py, dz=z-pz;
+      const d = Math.sqrt(dx*dx+dy*dy+dz*dz);
+      if(d<minD) minD=d;
+    }
+    return minD;
+  }
+  // Big caverns - wide open rooms
+  const cavernD = tunnelDist(wx,wy,wz, SEED+600, 0.012, 0.02, 6);
+  if(cavernD < 4.5 && wy > 5 && wy < 55) return true;
+  // Main tunnel network - large circular tubes
+  const tunnel1D = tunnelDist(wx,wy,wz, SEED+500, 0.02, 0.04, 4);
+  if(tunnel1D < 3 && wy < 70) return true;
+  // Secondary tunnels - smaller branches
+  const tunnel2D = tunnelDist(wx,wy,wz, SEED+520, 0.035, 0.05, 3);
+  if(tunnel2D < 2.2 && wy < 65) return true;
+  // Deep ravines - tall vertical cracks
+  const ravine = fbm(wx*0.015, wy*0.008, SEED+700+wz*0.015, 4);
+  if(ravine > 0.6 && wy < 40) return true;
+  // Near-surface entrances - big enough to walk into
+  const surfD = tunnelDist(wx,wy,wz, SEED+800, 0.025, 0.05, 5);
+  if(surfD < 3.5 && wy > 40 && wy < 70) return true;
+  return false;
 }
 
 function generateChunk(cx,cz){
+  if(questState.currentDimension==='choopLand') return generateChoonLandChunk(cx,cz);
+  if(questState.currentDimension==='colosseum') return generateColosseumChunk(cx,cz);
+  const ch = _generateOverworldChunk(cx,cz);
+  // Inject portal structure if this chunk contains the portal location
+  if(questState.portalX!==null && questState.portalActivated===false){
+    const pcx=questState.portalX>>4, pcz=questState.portalZ>>4;
+    if(cx===pcx && cz===pcz) _injectPortalStructure(ch.blocks, cx, cz);
+  }
+  return ch;
+}
+function _injectPortalStructure(blocks, cx, cz){
+  const wx=questState.portalX, wz=questState.portalZ;
+  const lx=wx-cx*CHUNK_SIZE, lz=wz-cz*CHUNK_SIZE;
+  const idx=(x,y,z)=>{ if(x<0||x>=CHUNK_SIZE||z<0||z>=CHUNK_SIZE||y<0||y>=WORLD_HEIGHT) return -1; return x+z*CHUNK_SIZE+y*CHUNK_SIZE*CHUNK_SIZE; };
+  // Use heightAt for consistent baseY (same as activatePortal)
+  const baseY=heightAt(wx,wz)+1;
+  // Base platform
+  for(let dx=-2;dx<=2;dx++){ const i=idx(lx+dx,baseY,lz); if(i>=0) blocks[i]=B.PORTAL_FRAME; }
+  // Pillars
+  for(let dy=1;dy<=5;dy++){
+    const li=idx(lx-2,baseY+dy,lz); if(li>=0) blocks[li]=B.PORTAL_FRAME;
+    const ri=idx(lx+2,baseY+dy,lz); if(ri>=0) blocks[ri]=B.PORTAL_FRAME;
+  }
+  // Top bar
+  for(let dx=-2;dx<=2;dx++){ const i=idx(lx+dx,baseY+5,lz); if(i>=0) blocks[i]=B.PORTAL_FRAME; }
+  // Top decoration
+  for(let dx=-1;dx<=1;dx++){ const i=idx(lx+dx,baseY+6,lz); if(i>=0) blocks[i]=B.PORTAL_FRAME; }
+  // If activated, fill interior with portal blocks
+  if(questState.portalActivated){
+    for(let dx=-1;dx<=1;dx++) for(let dy=1;dy<=4;dy++){ const i=idx(lx+dx,baseY+dy,lz); if(i>=0) blocks[i]=B.PORTAL; }
+  }
+}
+function _generateOverworldChunk(cx,cz){
   const blocks = new Uint8Array(CHUNK_SIZE*WORLD_HEIGHT*CHUNK_SIZE);
   const idx = (x,y,z)=> x + z*CHUNK_SIZE + y*CHUNK_SIZE*CHUNK_SIZE;
   for (let x=0;x<CHUNK_SIZE;x++){
@@ -980,9 +1482,10 @@ function generateChunk(cx,cz){
         let id = 0;
         if (y===0) id = B.BEDROCK;
         else if (y<h-4) id = B.STONE;
-        else if (y<h) id = biome==='desert'?B.SANDSTONE:B.DIRT;
+        else if (y<h) id = biome==='desert'?B.SANDSTONE:biome==='stone_table'?B.STONE:B.DIRT;
         else if (y===h){
-          if (h < SEA_LEVEL) id = B.SAND;
+          if (biome==='stone_table') id = B.STONE;
+          else if (h < SEA_LEVEL) id = B.SAND;
           else if (biome==='desert') id = B.SAND;
           else if (biome==='snow') id = B.SNOW;
           else id = B.GRASS;
@@ -992,14 +1495,19 @@ function generateChunk(cx,cz){
         // Ores
         if (id===B.STONE){
           const r = hashN(wx*13+wy(y), y*7, SEED+300+wz);
-          if (y<12 && r<0.008) id = B.DIAMOND_ORE;
-          else if (y<30 && r<0.015) id = B.GOLD_ORE;
-          else if (y<40 && r<0.025) id = B.COPPER_ORE;
-          else if (y<50 && r<0.03) id = B.IRON_ORE;
-          else if (r<0.04) id = B.COAL_ORE;
+          if (y<30 && r<0.006) id = B.DIAMOND_ORE;
+          else if (y<50 && r<0.012) id = B.GOLD_ORE;
+          else if (y<75 && r<0.018) id = B.IRON_ORE;
+          else {
+            const r2 = hashN(wx*17+wy(y), y*11, SEED+400+wz);
+            if (r<0.035 && r2<0.5) id = B.COPPER_ORE;
+            else if (r<0.035) id = B.COAL_ORE;
+          }
         }
         // Caves
-        if (id!==0 && id!==B.BEDROCK && id!==B.WATER && caveAt(wx,y,wz)) id = 0;
+        if (id!==0 && id!==B.BEDROCK && id!==B.WATER && biome!=='stone_table' && caveAt(wx,y,wz)){
+          id = y < 10 ? B.LAVA : 0;
+        }
         blocks[idx(x,y,z)] = id;
       }
     }
@@ -1023,6 +1531,10 @@ function generateChunk(cx,cz){
       if (surface===B.SAND && rng()<0.15){
         const cH = 2+Math.floor(rng()*2);
         for (let k=0;k<cH;k++) if (h+1+k<WORLD_HEIGHT) blocks[idx(lx,h+1+k,lz)] = B.CACTUS;
+      }
+    } else if (biome==='stone_table'){
+      if (surface===B.STONE && h >= SEA_LEVEL && rng()<0.35){
+        blocks[idx(lx,h,lz)] = rng()<0.5 ? B.COAL_ORE : B.IRON_ORE;
       }
     }
   }
@@ -1058,6 +1570,220 @@ function generateChunk(cx,cz){
   }
   return { blocks, mesh:null, dirty:true };
 }
+
+function generateChoonLandChunk(cx,cz){
+  const blocks = new Uint8Array(CHUNK_SIZE*WORLD_HEIGHT*CHUNK_SIZE);
+  const idx = (x,y,z)=> x + z*CHUNK_SIZE + y*CHUNK_SIZE*CHUNK_SIZE;
+  const dimSeed = SEED + 1000000;
+  for(let x=0;x<CHUNK_SIZE;x++){
+    for(let z=0;z<CHUNK_SIZE;z++){
+      const wx = cx*CHUNK_SIZE+x, wz = cz*CHUNK_SIZE+z;
+      const h = Math.floor(50 + fbm(wx*0.008, wz*0.008, dimSeed, 4)*20);
+      for(let y=0;y<WORLD_HEIGHT;y++){
+        let id = 0;
+        if(y===0) id = B.BEDROCK;
+        else if(y<h-4) id = B.CHOOP_STONE;
+        else if(y<h) id = B.CHOOP_DIRT;
+        else if(y===h) id = B.CHOOP_GRASS;
+        blocks[idx(x,y,z)] = id;
+      }
+    }
+  }
+  // Sparse decorations: tiny "trees" (choop pillars)
+  const rng = mulberry32(dimSeed ^ (cx*73856093) ^ (cz*19349663));
+  for(let i=0;i<4;i++){
+    const tx=Math.floor(rng()*CHUNK_SIZE), tz=Math.floor(rng()*CHUNK_SIZE);
+    const twx=cx*CHUNK_SIZE+tx, twz=cz*CHUNK_SIZE+tz;
+    const th=Math.floor(50 + fbm(twx*0.008, twz*0.008, dimSeed, 4)*20);
+    if(th>45){
+      const pillarH=2+Math.floor(rng()*3);
+      for(let dy=1;dy<=pillarH;dy++){
+        const pi=idx(tx,th+dy,tz);
+        if(pi>=0) blocks[pi]=B.CHOOP_STONE;
+      }
+    }
+  }
+  // --- Structures ---
+  // Helper: place a box of blocks in chunk-local coords
+  const placeBox=(lx,ly,lz,w,h,d,blockId)=>{
+    for(let dx=0;dx<w;dx++) for(let dy=0;dy<h;dy++) for(let dd=0;dd<d;dd++){
+      const px=lx+dx,py=ly+dy,pz=lz+dd;
+      if(px>=0&&px<CHUNK_SIZE&&py>=0&&py<WORLD_HEIGHT&&pz>=0&&pz<CHUNK_SIZE){
+        blocks[idx(px,py,pz)]=blockId;
+      }
+    }
+  };
+  // Houses: scattered small buildings (seeded by chunk position)
+  const houseRng=mulberry32(dimSeed+5000 ^ (cx*12345) ^ (cz*67890));
+  if(houseRng()<0.15){
+    const hx=Math.floor(houseRng()*8)+2, hz=Math.floor(houseRng()*8)+2;
+    const hwx=cx*CHUNK_SIZE+hx, hwz=cz*CHUNK_SIZE+hz;
+    const hh=Math.floor(50 + fbm(hwx*0.008, hwz*0.008, dimSeed, 4)*20);
+    if(hh>40 && hh<70){
+      // 6x5x6 house
+      placeBox(hx,hh+1,hz,6,5,6,B.CHOOP_STONE);
+      // Hollow interior
+      placeBox(hx+1,hh+1,hz+1,4,3,4,0);
+      // Door opening
+      blocks[idx(hx+2,hh+1,hz)]=0; blocks[idx(hx+2,hh+2,hz)]=0;
+      // Roof
+      placeBox(hx,hh+5,hz,6,1,6,B.CHOOP_STONE);
+      // Floor
+      placeBox(hx,hh,hz,6,1,6,B.CHOOP_STONE);
+      // Glowstone light
+      blocks[idx(hx+3,hh+3,hz+3)]=B.GLOWSTONE;
+    }
+  }
+  // Witch Hut: large dark structure far from center
+  const wDist=Math.sqrt((cx*CHUNK_SIZE+8)**2+(cz*CHUNK_SIZE+8)**2);
+  if(wDist>150 && wDist<250){
+    const wRng=mulberry32(dimSeed+99999 ^ (cx*55555) ^ (cz*77777));
+    if(wRng()<0.08){
+      const wx0=4, wz0=4;
+      const wwx=cx*CHUNK_SIZE+wx0+3, wwz=cz*CHUNK_SIZE+wz0+3;
+      const wh=Math.floor(50 + fbm(wwx*0.008, wwz*0.008, dimSeed, 4)*20);
+      if(wh>40){
+        // 10x8x8 hut
+        placeBox(wx0,wh+1,wz0,10,7,8,B.CHOOP_STONE);
+        // Hollow
+        placeBox(wx0+1,wh+1,wz0+1,8,5,6,0);
+        // Door
+        blocks[idx(wx0+4,wh+1,wz0)]=0; blocks[idx(wx0+4,wh+2,wz0)]=0;
+        // Roof (peaked)
+        for(let rx=0;rx<10;rx++) for(let rz=0;rz<8;rz++){
+          const rh=1+Math.floor(Math.min(rx<5?rx:9-rx, rz<4?rz:7-rz)*0.6);
+          for(let ry=0;ry<rh;ry++){
+            const pi=idx(wx0+rx,wh+7+ry,wz0+rz);
+            if(pi>=0) blocks[pi]=B.CHOOP_STONE;
+          }
+        }
+        // Floor
+        placeBox(wx0,wh,wz0,10,1,8,B.CHOOP_STONE);
+        // Glowstone lights
+        blocks[idx(wx0+2,wh+3,wz0+2)]=B.GLOWSTONE;
+        blocks[idx(wx0+7,wh+3,wz0+5)]=B.GLOWSTONE;
+      }
+    }
+  }
+  // Great Castle: massive structure near center (50-120 blocks from origin)
+  const cDist=Math.sqrt((cx*CHUNK_SIZE+8)**2+(cz*CHUNK_SIZE+8)**2);
+  if(cDist>50 && cDist<120){
+    const cRng=mulberry32(dimSeed+88888 ^ (cx*33333) ^ (cz*44444));
+    if(cRng()<0.08){
+      const cx0=2, cz0=2;
+      const cwx=cx*CHUNK_SIZE+cx0+8, cwz=cz*CHUNK_SIZE+cz0+8;
+      const ch=Math.floor(50 + fbm(cwx*0.008, cwz*0.008, dimSeed, 4)*20);
+      if(ch>40 && ch<60){
+        // 16x12x16 castle with maze below
+        placeBox(cx0,ch+1,cz0,16,11,16,B.STONE);
+        // Hollow interior (upper floor)
+        placeBox(cx0+1,ch+1,cz0+1,14,9,14,0);
+        // Gate opening (front) - 3 wide, 4 tall
+        for(let gx=6;gx<=9;gx++) for(let gy=1;gy<=4;gy++){
+          blocks[idx(cx0+gx,ch+gy,cz0)]=0;
+        }
+        // Battlements on top
+        for(let bx=cx0;bx<cx0+16;bx+=2){
+          blocks[idx(bx,ch+12,cz0)]=B.STONE;
+          blocks[idx(bx,ch+12,cz0+15)]=B.STONE;
+        }
+        for(let bz=cz0;bz<cz0+16;bz+=2){
+          blocks[idx(cx0,ch+12,bz)]=B.STONE;
+          blocks[idx(cx0+15,ch+12,bz)]=B.STONE;
+        }
+        // Upper floor
+        placeBox(cx0,ch,cz0,16,1,16,B.STONE);
+        // Interior pillars
+        for(const[px,pz]of[[cx0+4,cz0+4],[cx0+11,cz0+4],[cx0+4,cz0+11],[cx0+11,cz0+11]]){
+          for(let py=1;py<=9;py++) blocks[idx(px,ch+py,pz)]=B.STONE;
+        }
+        // Glowstone chandeliers
+        blocks[idx(cx0+7,ch+8,cz0+7)]=B.GLOWSTONE;
+        blocks[idx(cx0+8,ch+8,cz0+8)]=B.GLOWSTONE;
+        // Stairs down to maze (hole in floor at back of castle)
+        placeBox(cx0+7,ch,cz0+12,2,1,2,0); // hole in floor
+        // Maze level below castle (ch-5 to ch-1)
+        const mazeY=ch-5;
+        // Fill maze level with stone
+        placeBox(cx0,mazeY,cz0,16,4,16,B.STONE);
+        // Carve maze using simple deterministic pattern
+        // Outer walls stay, interior is carved as paths
+        for(let mz=1;mz<15;mz++){
+          for(let mx=1;mx<15;mx++){
+            // Maze pattern: alternating walls based on position + seed
+            const wallSeed=((mx*7+mz*13+SEED)%100);
+            const isWall=(mx%2===0 && mz%2===0) || (wallSeed<25 && mx>2 && mz>2 && mx<13 && mz<13);
+            if(!isWall){
+              // Carve path
+              blocks[idx(cx0+mx,mazeY+1,cz0+mz)]=0;
+              blocks[idx(cx0+mx,mazeY+2,cz0+mz)]=0;
+            }
+          }
+        }
+        // Corridor from stairs to maze
+        blocks[idx(cx0+7,mazeY+1,cz0+14)]=0;
+        blocks[idx(cx0+8,mazeY+1,cz0+14)]=0;
+        blocks[idx(cx0+7,mazeY+2,cz0+14)]=0;
+        blocks[idx(cx0+8,mazeY+2,cz0+14)]=0;
+        // Portal room at maze center (8,8 in maze coords)
+        placeBox(cx0+6,mazeY,cz0+6,4,1,4,B.STONE); // floor
+        placeBox(cx0+6,mazeY+1,cz0+6,4,3,4,0); // clear room
+        // Glowstone in portal room
+        blocks[idx(cx0+7,mazeY+3,cz0+7)]=B.GLOWSTONE;
+        blocks[idx(cx0+8,mazeY+3,cz0+8)]=B.GLOWSTONE;
+        // Portal blocks in room
+        for(let py=mazeY+1;py<=mazeY+3;py++){
+          blocks[idx(cx0+7,py,cz0+7)]=B.PORTAL;
+          blocks[idx(cx0+8,py,cz0+8)]=B.PORTAL;
+        }
+        // Portal frame pillars
+        for(let py=mazeY;py<=mazeY+4;py++){
+          blocks[idx(cx0+6,py,cz0+6)]=B.STONE;
+          blocks[idx(cx0+9,py,cz0+6)]=B.STONE;
+          blocks[idx(cx0+6,py,cz0+9)]=B.STONE;
+          blocks[idx(cx0+9,py,cz0+9)]=B.STONE;
+        }
+      }
+    }
+  }
+  return { blocks, mesh:null, dirty:true };
+}
+
+function generateColosseumChunk(cx,cz){
+  const blocks = new Uint8Array(CHUNK_SIZE*WORLD_HEIGHT*CHUNK_SIZE);
+  const idx = (x,y,z)=> x + z*CHUNK_SIZE + y*CHUNK_SIZE*CHUNK_SIZE;
+  // Flat arena with stone floor
+  for(let x=0;x<CHUNK_SIZE;x++){
+    for(let z=0;z<CHUNK_SIZE;z++){
+      const wx=cx*CHUNK_SIZE+x, wz=cz*CHUNK_SIZE+z;
+      const dist=Math.sqrt(wx*wx+wz*wz);
+      for(let y=0;y<WORLD_HEIGHT;y++){
+        let id=0;
+        if(y===0) id=B.BEDROCK;
+        else if(y<15) id=B.STONE;
+        else if(y===15) id=B.STONE; // arena floor
+        // Arena walls: ring at radius 18
+        if(dist>17 && dist<19 && y>=16 && y<=20) id=B.STONE;
+        // Spectator stands: ring between 20-40 blocks from center
+        if(dist>20 && dist<40){
+          const standH=Math.floor(16+(dist-20)*0.8);
+          if(y>=16 && y<=standH) id=B.STONE;
+        }
+        // Outer wall
+        if(dist>38 && dist<42 && y>=16 && y<=30) id=B.STONE;
+        blocks[idx(x,y,z)]=id;
+      }
+    }
+  }
+  // Glowstone lights around arena rim
+  for(let a=0;a<8;a++){
+    const angle=a*Math.PI/4;
+    const lx=Math.round(Math.cos(angle)*17), lz=Math.round(Math.sin(angle)*17);
+    if(lx>=0&&lx<CHUNK_SIZE&&lz>=0&&lz<CHUNK_SIZE) blocks[idx(lx,20,lz)]=B.GLOWSTONE;
+  }
+  return { blocks, mesh:null, dirty:true };
+}
+
 function wy(_){return 0} // dummy
 function placeTree(blocks, x, y, z, rng){
   const idx = (x,y,z)=>{
@@ -1079,27 +1805,32 @@ function placeTree(blocks, x, y, z, rng){
   const i=idx(x,topY+2,z); if (i>=0) blocks[i]=B.OAK_LEAVES;
 }
 
+// Chunk lookup cache — avoids Map.get + string concat on every getBlock call
+let _cacheKey = '', _cacheCh = null;
 function getBlock(wx,wy,wz){
   if (wy<0||wy>=WORLD_HEIGHT) return 0;
-  const cx=Math.floor(wx/CHUNK_SIZE), cz=Math.floor(wz/CHUNK_SIZE);
-  const ch = chunks.get(chunkKey(cx,cz));
+  const cx=wx>>4, cz=wz>>4;
+  const k = cx+','+cz;
+  let ch;
+  if(k===_cacheKey){ ch=_cacheCh; } else { ch=chunks.get(k); _cacheKey=k; _cacheCh=ch; }
   if (!ch) return 0;
   const lx = wx - cx*CHUNK_SIZE, lz = wz - cz*CHUNK_SIZE;
   return ch.blocks[lx + lz*CHUNK_SIZE + wy*CHUNK_SIZE*CHUNK_SIZE];
 }
 function setBlock(wx,wy,wz,id){
   if (wy<0||wy>=WORLD_HEIGHT) return;
-  const cx=Math.floor(wx/CHUNK_SIZE), cz=Math.floor(wz/CHUNK_SIZE);
-  const ch = chunks.get(chunkKey(cx,cz));
+  const cx=wx>>4, cz=wz>>4;
+  const k = cx+','+cz;
+  const ch = chunks.get(k);
   if (!ch) return;
   const lx = wx - cx*CHUNK_SIZE, lz = wz - cz*CHUNK_SIZE;
   ch.blocks[lx + lz*CHUNK_SIZE + wy*CHUNK_SIZE*CHUNK_SIZE] = id;
   ch.dirty = true;
-  // Mark neighbors dirty if on edge
-  if (lx===0){ const n=chunks.get(chunkKey(cx-1,cz)); if(n)n.dirty=true; }
-  if (lx===CHUNK_SIZE-1){ const n=chunks.get(chunkKey(cx+1,cz)); if(n)n.dirty=true; }
-  if (lz===0){ const n=chunks.get(chunkKey(cx,cz-1)); if(n)n.dirty=true; }
-  if (lz===CHUNK_SIZE-1){ const n=chunks.get(chunkKey(cx,cz+1)); if(n)n.dirty=true; }
+  _cacheKey=''; // invalidate cache
+  if (lx===0){ const n=chunks.get((cx-1)+','+cz); if(n)n.dirty=true; }
+  if (lx===CHUNK_SIZE-1){ const n=chunks.get((cx+1)+','+cz); if(n)n.dirty=true; }
+  if (lz===0){ const n=chunks.get(cx+','+(cz-1)); if(n)n.dirty=true; }
+  if (lz===CHUNK_SIZE-1){ const n=chunks.get(cx+','+(cz+1)); if(n)n.dirty=true; }
 }
 function isSolid(wx,wy,wz){
   const id = getBlock(wx,wy,wz);
@@ -1201,6 +1932,7 @@ function buildChunkMesh(cx,cz){
     m.renderOrder = transparent ? 1 : 0;
     m.frustumCulled = true;
     m.receiveShadow = true;
+    m.castShadow = true;
     group.add(m);
   }
   makeMesh(positions,normals,uvs,indices,false);
@@ -1236,15 +1968,15 @@ scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xffffff, 0.9);
 sun.position.set(50,100,30);
 sun.castShadow = false;
-sun.shadow.mapSize.width = 1024;
-sun.shadow.mapSize.height = 1024;
+sun.shadow.mapSize.width = 2048;
+sun.shadow.mapSize.height = 2048;
 sun.shadow.camera.near = 0.5;
 sun.shadow.camera.far = 200;
-sun.shadow.camera.left = -60;
-sun.shadow.camera.right = 60;
-sun.shadow.camera.top = 60;
-sun.shadow.camera.bottom = -60;
-sun.shadow.bias = -0.001;
+sun.shadow.camera.left = -40;
+sun.shadow.camera.right = 40;
+sun.shadow.camera.top = 40;
+sun.shadow.camera.bottom = -40;
+sun.shadow.bias = -0.0005;
 scene.add(sun);
 scene.add(sun.target);
 const moon = new THREE.DirectionalLight(0x6070a0, 0.25);
@@ -1310,6 +2042,29 @@ const player = {
   dead:false,
 };
 
+// Quest state for Choop King quest chain
+const questState = {
+  hasPortalMap: false,
+  portalBlocksPlaced: 0,
+  portalActivated: false,
+  currentDimension: 'overworld',
+  portalX: null,
+  portalZ: null,
+  greatGuardianKilled: false,
+  witchQuestDone: false,
+  hasCastleKey: false,
+  bossDefeated: false,
+  hasKingCrown: false,
+};
+let voyagerSpawned = false;
+
+// Player shadow blob (visible in first-person)
+const playerShadowGeo = new THREE.CircleGeometry(0.4, 16);
+playerShadowGeo.rotateX(-Math.PI/2);
+const playerShadow = new THREE.Mesh(playerShadowGeo, new THREE.MeshBasicMaterial({color:0x000000, transparent:true, opacity:0.3, depthWrite:false}));
+playerShadow.visible = false;
+scene.add(playerShadow);
+
 // Place player on surface
 function isSpawnClear(sx,sz){
   const sh = heightAt(sx,sz);
@@ -1358,7 +2113,7 @@ addEventListener('keydown', e=>{
   // Don't capture keys when typing in an input field
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
   // Chat: T key opens chat in multiplayer
-  if (e.code==='KeyT' && mpMode !== 'none' && !chatOpen && locked){
+  if (e.code==='KeyT' && !chatOpen && locked){
     e.preventDefault();
     openChat();
     return;
@@ -1441,15 +2196,16 @@ addEventListener('keydown', e=>{
 addEventListener('keyup', e=>{ keys[e.code]=false; });
 
 let locked = false;
+function safeRequestPointerLock(){ try{ canvas.requestPointerLock(); }catch(e){} }
 canvas.addEventListener('click', ()=>{
-  if (!locked && !paused && gameStarted) canvas.requestPointerLock();
+  if (!locked && !paused && gameStarted) safeRequestPointerLock();
 });
 document.addEventListener('pointerlockchange', ()=>{
   locked = document.pointerLockElement===canvas;
   if (!locked) mouseHeld = false;
   if (!inventoryOpen && !settingsOpen && !paused && !gameStarted) document.getElementById('lobby').style.display = locked?'none':'flex';
   // Show pause menu when pointer lock is lost during gameplay (ESC pressed)
-  if (!locked && gameStarted && !player.dead && !inventoryOpen && !settingsOpen && !paused){
+  if (!locked && gameStarted && !player.dead && !inventoryOpen && !settingsOpen && !chatOpen && !paused){
     pauseGame();
   }
 });
@@ -1515,6 +2271,102 @@ canvas.addEventListener('mousedown', e=>{
         player.eatingItem = {id:slot.id, startTime:performance.now()/1000};
         player.rightMouseHeld = true;
         return;
+      }
+    }
+    // Voyager trade: right-click on Voyager mob
+    if(player.gameMode==='survival'){
+      for(const mob of mobs){
+        if(mob.type==='voyager'){
+          const dist=new THREE.Vector3(player.pos.x,player.pos.y+0.9,player.pos.z).distanceTo(mob.mesh.position);
+          if(dist<4){
+            const toMob=mob.mesh.position.clone().sub(new THREE.Vector3(player.pos.x,player.pos.y+0.9,player.pos.z)).normalize();
+            const lookDir=new THREE.Vector3(0,0,-1).applyEuler(new THREE.Euler(player.pitch,player.yaw,0,'YXZ'));
+            if(toMob.dot(lookDir)>0.5){
+              let choopTotal=0;
+              for(const s of inventory) if(s && s.id===B.CHOOP_BLOCK) choopTotal+=s.count;
+              if(choopTotal>=3){
+                let removed=0;
+                for(let si=0;si<36&&removed<3;si++){
+                  while(removed<3 && inventory[si] && inventory[si].id===B.CHOOP_BLOCK){ removeFromSlot(si); removed++; }
+                }
+                addToInventory(B.PORTAL_MAP);
+                questState.hasPortalMap=true;
+                updateHotbar();
+                flash('The Voyager trades your Choop Blocks for a Portal Map!');
+                mob.state='departing';
+                const da=Math.random()*Math.PI*2;
+                mob.vel.x=Math.cos(da)*3; mob.vel.z=Math.sin(da)*3;
+              } else {
+                flash('The Voyager seems interested in your Choop Blocks... (Need 3)');
+              }
+              return;
+            }
+          }
+        }
+        // Corrupt Witch interaction
+        if(mob.type==='corrupt_witch'){
+          const dist=new THREE.Vector3(player.pos.x,player.pos.y+0.9,player.pos.z).distanceTo(mob.mesh.position);
+          if(dist<4){
+            const toMob=mob.mesh.position.clone().sub(new THREE.Vector3(player.pos.x,player.pos.y+0.9,player.pos.z)).normalize();
+            const lookDir=new THREE.Vector3(0,0,-1).applyEuler(new THREE.Euler(player.pitch,player.yaw,0,'YXZ'));
+            if(toMob.dot(lookDir)>0.5){
+              if(!questState.greatGuardianKilled && !questState.witchQuestDone){
+                flash('Witch: "Kill the Great Guardian roaming these lands, and I shall grant you the Castle Key."');
+              } else if(questState.greatGuardianKilled && !questState.witchQuestDone){
+                questState.witchQuestDone=true;
+                addToInventory(B.CASTLE_KEY);
+                questState.hasCastleKey=true;
+                flash('The Witch cackles... "The Castle awaits." You received the Castle Key!');
+                // Witch despawns after giving quest
+                scene.remove(mob.mesh);
+                const widx=mobs.indexOf(mob); if(widx>=0) mobs.splice(widx,1);
+              } else {
+                flash('The Witch has nothing more to say...');
+              }
+              return;
+            }
+          }
+        }
+      }
+    }
+    // Portal Map: show direction to portal
+    {
+      const slot = inventory[selectedSlot];
+      if(slot && slot.id===B.PORTAL_MAP){
+        if(questState.portalX!==null){
+          const dx=questState.portalX-player.pos.x;
+          const dz=questState.portalZ-player.pos.z;
+          const dist=Math.sqrt(dx*dx+dz*dz);
+          const dir=Math.atan2(dx,dz)*180/Math.PI;
+          flash('Portal: '+Math.floor(dist)+'m away (bearing '+Math.floor(dir)+' degrees)');
+        } else {
+          // Generate portal location on first use
+          const angle = (SEED * 0.001) % (Math.PI*2);
+          const dist = 200 + (SEED % 200);
+          questState.portalX = Math.floor(Math.cos(angle)*dist);
+          questState.portalZ = Math.floor(Math.sin(angle)*dist);
+          // Portal structure will be injected when chunk loads
+          flash('The map reveals a portal location!');
+        }
+        return;
+      }
+    }
+    // Portal activation: place Choop Block on portal frame
+    {
+      const hit2 = raycast();
+      if(hit2 && hit2.id===B.PORTAL_FRAME){
+        const slot = inventory[selectedSlot];
+        if(slot && slot.id===B.CHOOP_BLOCK && !questState.portalActivated){
+          if(!isSolid(hit2.x, hit2.y+1, hit2.z)){
+            setBlock(hit2.x, hit2.y+1, hit2.z, B.CHOOP_BLOCK_PLACED);
+            removeFromSlot(selectedSlot);
+            updateHotbar();
+            questState.portalBlocksPlaced++;
+            flash('Choop Block placed! ('+questState.portalBlocksPlaced+'/3)');
+            if(questState.portalBlocksPlaced>=3) activatePortal();
+          }
+          return;
+        }
       }
     }
     placeBlock();
@@ -1680,6 +2532,7 @@ let inventoryOpen = false;
 let invDrag = null; // {slot} when picking up an item
 let savedSurvivalHealth = 20;
 let savedSurvivalAir = 300;
+let savedSurvivalHunger = 20;
 
 function addToInventory(id){
   // Try stacking first
@@ -1959,7 +2812,7 @@ function closeInventory(){
   hideTooltip();
   document.getElementById('inv-overlay').style.display = 'none';
   document.getElementById('smelter-ui').classList.remove('open');
-  canvas.requestPointerLock();
+  safeRequestPointerLock();
 }
 
 function returnCraftItems(){
@@ -2340,30 +3193,39 @@ document.addEventListener('mousemove', (e)=>{
 document.addEventListener('mouseleave', hideTooltip);
 
 // ---------- Raycasting / block interaction ----------
+// Pre-allocated raycast objects to avoid per-frame GC
+const _rcDir = new THREE.Vector3();
+const _rcEuler = new THREE.Euler(0,0,0,'YXZ');
+const _rcOrigin = new THREE.Vector3();
+const _rcResult = {x:0,y:0,z:0,face:null,id:0};
+let _rcFrame = -1, _rcCache = null;
 function raycast(maxDist=6){
-  const dir = new THREE.Vector3(0,0,-1);
-  dir.applyEuler(new THREE.Euler(player.pitch, player.yaw, 0, 'YXZ'));
-  const origin = player.pos.clone().add(new THREE.Vector3(0, player.eye, 0));
-  // DDA
-  let x=Math.floor(origin.x), y=Math.floor(origin.y), z=Math.floor(origin.z);
-  const stepX = dir.x>0?1:-1, stepY = dir.y>0?1:-1, stepZ = dir.z>0?1:-1;
-  const tDeltaX = Math.abs(1/dir.x), tDeltaY = Math.abs(1/dir.y), tDeltaZ = Math.abs(1/dir.z);
-  let tMaxX = ((stepX>0?(x+1-origin.x):(origin.x-x)))*tDeltaX;
-  let tMaxY = ((stepY>0?(y+1-origin.y):(origin.y-y)))*tDeltaY;
-  let tMaxZ = ((stepZ>0?(z+1-origin.z):(origin.z-z)))*tDeltaZ;
-  let face = null;
-  let t = 0;
-  while (t < maxDist){
-    const id = getBlock(x,y,z);
-    if (id && BLOCKS[id].solid){
-      return { x,y,z, face, id };
+  if(_rcFrame===frameCount && maxDist===6) return _rcCache;
+  _rcFrame=frameCount;
+  _rcDir.set(0,0,-1);
+  _rcEuler.set(player.pitch, player.yaw, 0);
+  _rcDir.applyEuler(_rcEuler);
+  _rcOrigin.set(player.pos.x, player.pos.y+player.eye, player.pos.z);
+  let x=Math.floor(_rcOrigin.x), y=Math.floor(_rcOrigin.y), z=Math.floor(_rcOrigin.z);
+  const stepX=_rcDir.x>0?1:-1, stepY=_rcDir.y>0?1:-1, stepZ=_rcDir.z>0?1:-1;
+  const tDeltaX=Math.abs(1/_rcDir.x), tDeltaY=Math.abs(1/_rcDir.y), tDeltaZ=Math.abs(1/_rcDir.z);
+  let tMaxX=((stepX>0?(x+1-_rcOrigin.x):(_rcOrigin.x-x)))*tDeltaX;
+  let tMaxY=((stepY>0?(y+1-_rcOrigin.y):(_rcOrigin.y-y)))*tDeltaY;
+  let tMaxZ=((stepZ>0?(z+1-_rcOrigin.z):(_rcOrigin.z-z)))*tDeltaZ;
+  let face=null, t=0;
+  while(t<maxDist){
+    const id=getBlock(x,y,z);
+    if(id&&BLOCKS[id].solid){
+      _rcResult.x=x; _rcResult.y=y; _rcResult.z=z; _rcResult.face=face; _rcResult.id=id;
+      _rcCache=_rcResult; return _rcResult;
     }
-    if (tMaxX < tMaxY && tMaxX < tMaxZ){ x+=stepX; t=tMaxX; tMaxX+=tDeltaX; face=[-stepX,0,0]; }
-    else if (tMaxY < tMaxZ){ y+=stepY; t=tMaxY; tMaxY+=tDeltaY; face=[0,-stepY,0]; }
-    else { z+=stepZ; t=tMaxZ; tMaxZ+=tDeltaZ; face=[0,0,-stepZ]; }
+    if(tMaxX<tMaxY&&tMaxX<tMaxZ){x+=stepX;t=tMaxX;tMaxX+=tDeltaX;face=[-stepX,0,0];}
+    else if(tMaxY<tMaxZ){y+=stepY;t=tMaxY;tMaxY+=tDeltaY;face=[0,-stepY,0];}
+    else{z+=stepZ;t=tMaxZ;tMaxZ+=tDeltaZ;face=[0,0,-stepZ];}
   }
-  return null;
+  _rcCache=null; return null;
 }
+let frameCount = 0;
 // Drop mapping: what item a block gives when broken
 function getDropId(blockId){
   if (blockId === B.STONE) return B.PEBBLED_STONE;
@@ -2374,12 +3236,17 @@ function getDropId(blockId){
   if (blockId === B.DIAMOND_ORE) return B.DIAMOND_GEM;
   return blockId; // everything else drops itself
 }
+function getDropCount(blockId){
+  if (blockId === B.COAL_ORE) return 1 + Math.floor(Math.random()*6); // 1-6
+  if (blockId === B.COPPER_ORE) return 1 + Math.floor(Math.random()*2); // 1-2
+  return 1;
+}
 function breakBlockInstant(){
   if (inventoryOpen) return;
   const hit = raycast();
   if (!hit) return;
   if (hit.id===B.BEDROCK) return;
-  if (player.gameMode==='survival') addToInventory(getDropId(hit.id));
+  if (player.gameMode==='survival'){ const did=getDropId(hit.id); for(let di=0;di<getDropCount(hit.id);di++) addToInventory(did); }
   setBlock(hit.x, hit.y, hit.z, 0);
   if (player.gameMode==='survival') updateHotbar();
 }
@@ -2436,7 +3303,7 @@ function updateBreaking(dt){
   breakOverlay.material.opacity = Math.min(0.8, breaking.progress / breaking.hardness);
   // Check if done
   if (breaking.progress >= breaking.hardness){
-    spawnDrop(breaking.x+0.5, breaking.y+0.5, breaking.z+0.5, getDropId(breaking.id));
+    { const did=getDropId(breaking.id); for(let di=0;di<getDropCount(breaking.id);di++) spawnDrop(breaking.x+0.5, breaking.y+0.5, breaking.z+0.5, did); }
     setBlock(breaking.x, breaking.y, breaking.z, 0);
     updateHotbar();
     // If mouse still held, auto-start next block
@@ -2486,6 +3353,10 @@ function collidesAt(px,py,pz){
 function inWaterAt(px,py,pz){
   const id = getBlock(Math.floor(px), Math.floor(py+1), Math.floor(pz));
   return id===B.WATER;
+}
+function inLavaAt(px,py,pz){
+  const id = getBlock(Math.floor(px), Math.floor(py+1), Math.floor(pz));
+  return id===B.LAVA;
 }
 
 let drownAccum = 0;
@@ -2588,6 +3459,7 @@ function updateDrops(dt){
 const mobs = [];
 let mobSpawnTimer = 0;
 let chooperSpawnTimer = 0;
+let choopLandSpawnTimer = 0;
 const MOB_TYPES = {
   sheep: {name:'Sheep', health:8, bodyColor:0xf0f0f0, headColor:0xf5f0e0, legColor:0x555555,
     spawnBiomes:['forest','plains'], maxPerChunk:2, drops:[B.WHOLE_MUTTON], dropCount:1, speed:1.8},
@@ -2597,6 +3469,20 @@ const MOB_TYPES = {
     spawnBiomes:['snow'], maxPerChunk:2, drops:[B.FULL_REINDEER], dropCount:1, speed:2.5, hasAntlers:true},
   chooper: {name:'Chooper', health:20, bodyColor:0x808080, headColor:0x808080, legColor:0x808080,
     spawnBiomes:null, maxPerChunk:0, drops:[], dropCount:0, speed:3.0, hostile:true, contactDamage:3, detectionRange:16},
+  voyager: {name:'Voyager', health:30, bodyColor:0x4488aa, headColor:0x66bbdd, legColor:0x336688,
+    spawnBiomes:null, maxPerChunk:0, drops:[], dropCount:0, speed:1.5},
+  chooper_worker: {name:'Chooper Worker', health:12, bodyColor:0x9070a0, headColor:0xa080b0, legColor:0x605070,
+    spawnBiomes:null, maxPerChunk:0, drops:[], dropCount:0, speed:2.0, hostile:false},
+  chooper_guardian: {name:'Chooper Guardian', health:25, bodyColor:0x6060a0, headColor:0x7070b0, legColor:0x404080,
+    spawnBiomes:null, maxPerChunk:0, drops:[], dropCount:0, speed:3.5, hostile:true, contactDamage:4, detectionRange:14},
+  tiny_chooper: {name:'Tiny Chooper', health:8, bodyColor:0xa06080, headColor:0xb07090, legColor:0x705060,
+    spawnBiomes:null, maxPerChunk:0, drops:[], dropCount:0, speed:4.5, hostile:true, contactDamage:2, detectionRange:10},
+  corrupt_witch: {name:'Corrupt Witch', health:30, bodyColor:0x403050, headColor:0x504060, legColor:0x302040,
+    spawnBiomes:null, maxPerChunk:0, drops:[], dropCount:0, speed:0, hostile:false},
+  great_guardian: {name:'Great Guardian', health:50, bodyColor:0x3030a0, headColor:0x4040c0, legColor:0x202080,
+    spawnBiomes:null, maxPerChunk:0, drops:[], dropCount:0, speed:3.0, hostile:true, contactDamage:6, detectionRange:20},
+  chooper_king: {name:'Chooper King', health:200, bodyColor:0x8020a0, headColor:0xa030c0, legColor:0x601880,
+    spawnBiomes:null, maxPerChunk:0, drops:[B.KING_CROWN], dropCount:1, speed:4.0, hostile:true, contactDamage:8, detectionRange:30},
 };
 
 function createMobMesh(type){
@@ -2649,6 +3535,125 @@ function createMobMesh(type){
     for(const s of[-0.2,0.2]){
       const eye=new THREE.Mesh(new THREE.BoxGeometry(0.15,0.15,0.02),em);
       eye.position.set(s,0.65,0.51); eye.name='eye'; g.add(eye);
+    }
+  } else if (type==='voyager'){
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.8,1.4,0.6), new THREE.MeshLambertMaterial({color:def.bodyColor}));
+    body.position.y=1.0; g.add(body);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.5,0.5,0.5), new THREE.MeshLambertMaterial({color:def.headColor}));
+    head.position.set(0,2.0,0); g.add(head);
+    const hood = new THREE.Mesh(new THREE.BoxGeometry(0.55,0.25,0.55), new THREE.MeshLambertMaterial({color:0x223344}));
+    hood.position.set(0,2.35,0); g.add(hood);
+    const pack = new THREE.Mesh(new THREE.BoxGeometry(0.4,0.5,0.3), new THREE.MeshLambertMaterial({color:0x8B7355}));
+    pack.position.set(0,1.2,-0.45); g.add(pack);
+    const em=new THREE.MeshBasicMaterial({color:0xffffff});
+    for(const s of[-0.15,0.15]){
+      const eye=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.1,0.02),em);
+      eye.position.set(s,2.05,0.26); g.add(eye);
+    }
+    for(const[lx,lz]of[[-0.2,0.2],[0.2,0.2],[-0.2,-0.2],[0.2,-0.2]]){
+      const leg=new THREE.Mesh(new THREE.BoxGeometry(0.15,0.7,0.15),new THREE.MeshLambertMaterial({color:def.legColor}));
+      leg.position.set(lx,0.35,lz); g.add(leg);
+    }
+  } else if (type==='chooper_worker'){
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.9,0.9,0.9), new THREE.MeshLambertMaterial({color:def.bodyColor}));
+    body.position.y=0.5; body.name='body'; g.add(body);
+    const em=new THREE.MeshBasicMaterial({color:0xffcc00});
+    for(const s of[-0.2,0.2]){
+      const eye=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.12,0.02),em);
+      eye.position.set(s,0.65,0.46); eye.name='eye'; g.add(eye);
+    }
+    // Mining pick on back
+    const pick=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.5,0.08),new THREE.MeshLambertMaterial({color:0x886644}));
+    pick.position.set(0,0.7,-0.5); g.add(pick);
+    for(const[lx,lz]of[[-0.2,0.2],[0.2,0.2],[-0.2,-0.2],[0.2,-0.2]]){
+      const leg=new THREE.Mesh(new THREE.BoxGeometry(0.15,0.45,0.15),new THREE.MeshLambertMaterial({color:def.legColor}));
+      leg.position.set(lx,0.22,lz); g.add(leg);
+    }
+  } else if (type==='chooper_guardian'){
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.1,1.1,1.1), new THREE.MeshLambertMaterial({color:def.bodyColor}));
+    body.position.y=0.6; body.name='body'; g.add(body);
+    const em=new THREE.MeshBasicMaterial({color:0xff2222});
+    for(const s of[-0.22,0.22]){
+      const eye=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.18,0.02),em);
+      eye.position.set(s,0.8,0.56); eye.name='eye'; g.add(eye);
+    }
+    // Shield
+    const shield=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.8,0.1),new THREE.MeshLambertMaterial({color:0x4444aa}));
+    shield.position.set(-0.7,0.6,0.1); g.add(shield);
+    for(const[lx,lz]of[[-0.25,0.25],[0.25,0.25],[-0.25,-0.25],[0.25,-0.25]]){
+      const leg=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.5,0.18),new THREE.MeshLambertMaterial({color:def.legColor}));
+      leg.position.set(lx,0.25,lz); g.add(leg);
+    }
+  } else if (type==='tiny_chooper'){
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.5,0.5,0.5), new THREE.MeshLambertMaterial({color:def.bodyColor}));
+    body.position.y=0.3; body.name='body'; g.add(body);
+    const em=new THREE.MeshBasicMaterial({color:0xff4444});
+    for(const s of[-0.12,0.12]){
+      const eye=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.1,0.02),em);
+      eye.position.set(s,0.38,0.26); eye.name='eye'; g.add(eye);
+    }
+    for(const[lx,lz]of[[-0.12,0.12],[0.12,0.12],[-0.12,-0.12],[0.12,-0.12]]){
+      const leg=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.25,0.1),new THREE.MeshLambertMaterial({color:def.legColor}));
+      leg.position.set(lx,0.12,lz); g.add(leg);
+    }
+  } else if (type==='corrupt_witch'){
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.8,1.3,0.7), new THREE.MeshLambertMaterial({color:def.bodyColor}));
+    body.position.y=0.9; g.add(body);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.5,0.5,0.5), new THREE.MeshLambertMaterial({color:def.headColor}));
+    head.position.set(0,1.85,0); g.add(head);
+    // Witch hat
+    const hatBrim=new THREE.Mesh(new THREE.BoxGeometry(0.7,0.08,0.7),new THREE.MeshLambertMaterial({color:0x1a1a2e}));
+    hatBrim.position.set(0,2.15,0); g.add(hatBrim);
+    const hatTop=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.4,0.3),new THREE.MeshLambertMaterial({color:0x1a1a2e}));
+    hatTop.position.set(0,2.4,0); g.add(hatTop);
+    // Glowing eyes
+    const em=new THREE.MeshBasicMaterial({color:0xaa00ff});
+    for(const s of[-0.12,0.12]){
+      const eye=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.08,0.02),em);
+      eye.position.set(s,1.9,0.26); g.add(eye);
+    }
+    for(const[lx,lz]of[[-0.2,0.2],[0.2,0.2],[-0.2,-0.2],[0.2,-0.2]]){
+      const leg=new THREE.Mesh(new THREE.BoxGeometry(0.15,0.6,0.15),new THREE.MeshLambertMaterial({color:def.legColor}));
+      leg.position.set(lx,0.3,lz); g.add(leg);
+    }
+  } else if (type==='great_guardian'){
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.4,1.6,1.3), new THREE.MeshLambertMaterial({color:def.bodyColor}));
+    body.position.y=0.9; body.name='body'; g.add(body);
+    const em=new THREE.MeshBasicMaterial({color:0x00ffff});
+    for(const s of[-0.3,0.3]){
+      const eye=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.22,0.02),em);
+      eye.position.set(s,1.2,0.66); eye.name='eye'; g.add(eye);
+    }
+    // Crown-like horns
+    for(const s of[-0.4,0.4]){
+      const horn=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.5,0.12),new THREE.MeshLambertMaterial({color:0x6666ff}));
+      horn.position.set(s,1.9,0); g.add(horn);
+    }
+    for(const[lx,lz]of[[-0.3,0.3],[0.3,0.3],[-0.3,-0.3],[0.3,-0.3]]){
+      const leg=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.7,0.2),new THREE.MeshLambertMaterial({color:def.legColor}));
+      leg.position.set(lx,0.35,lz); g.add(leg);
+    }
+  } else if (type==='chooper_king'){
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2.0,2.0,1.8), new THREE.MeshLambertMaterial({color:def.bodyColor}));
+    body.position.y=1.2; body.name='body'; g.add(body);
+    const em=new THREE.MeshBasicMaterial({color:0xff00ff});
+    for(const s of[-0.4,0.4]){
+      const eye=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.3,0.03),em);
+      eye.position.set(s,1.6,0.91); eye.name='eye'; g.add(eye);
+    }
+    // Crown
+    const crown=new THREE.Mesh(new THREE.BoxGeometry(1.2,0.3,1.0),new THREE.MeshLambertMaterial({color:0xffd700}));
+    crown.position.set(0,2.35,0); g.add(crown);
+    for(const cx of[-0.4,0,0.4]){
+      const peak=new THREE.Mesh(new THREE.BoxGeometry(0.15,0.3,0.15),new THREE.MeshLambertMaterial({color:0xffd700}));
+      peak.position.set(cx,2.65,0); g.add(peak);
+    }
+    // Cape
+    const cape=new THREE.Mesh(new THREE.BoxGeometry(1.8,1.5,0.1),new THREE.MeshLambertMaterial({color:0x4a0060}));
+    cape.position.set(0,1.0,-0.95); g.add(cape);
+    for(const[lx,lz]of[[-0.45,0.4],[0.45,0.4],[-0.45,-0.4],[0.45,-0.4]]){
+      const leg=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.9,0.3),new THREE.MeshLambertMaterial({color:def.legColor}));
+      leg.position.set(lx,0.45,lz); g.add(leg);
     }
   }
   // Enable shadow casting for all mesh children
@@ -2733,6 +3738,133 @@ function updateMobAI(mob, dt){
       } else if(mob.state!=='provoked'){ mob.state='idle'; mob.vel.x=0; mob.vel.z=0; }
     }
     if(mob.attackCooldown>0) mob.attackCooldown-=dt;
+  } else if(mob.type==='voyager'){
+    // Voyager departing: wander away, despawn when far
+    if(mob.state==='departing'){
+      mob.wanderTimer-=dt;
+      if(mob.wanderTimer<=0){
+        const a=Math.random()*Math.PI*2;
+        mob.vel.x=Math.cos(a)*def.speed*0.5;
+        mob.vel.z=Math.sin(a)*def.speed*0.5;
+        mob.mesh.rotation.y=Math.atan2(Math.cos(a),Math.sin(a));
+        mob.wanderTimer=2+Math.random()*3;
+      }
+      if(distToPlayer>60){
+        scene.remove(mob.mesh);
+        const idx=mobs.indexOf(mob); if(idx>=0)mobs.splice(idx,1);
+      }
+      return;
+    }
+    // Voyager: slow wander, stops and faces player when close
+    if(distToPlayer < 6){
+      const dx=player.pos.x-pos.x, dz=player.pos.z-pos.z;
+      mob.mesh.rotation.y=Math.atan2(dx,dz);
+      mob.vel.x=0; mob.vel.z=0;
+      mob.state='trading';
+    } else {
+      mob.state='idle';
+      mob.wanderTimer-=dt;
+      if(mob.wanderTimer<=0){
+        const a=Math.random()*Math.PI*2;
+        mob.vel.x=Math.cos(a)*def.speed*0.3;
+        mob.vel.z=Math.sin(a)*def.speed*0.3;
+        mob.mesh.rotation.y=Math.atan2(Math.cos(a),Math.sin(a));
+        mob.wanderTimer=3+Math.random()*5;
+      }
+    }
+  } else if(mob.type==='chooper_worker'){
+    // Chooper Worker: slow wander, no flee
+    mob.wanderTimer-=dt;
+    if(mob.wanderTimer<=0){
+      if(Math.random()<0.4){ mob.state='idle'; mob.vel.x=0; mob.vel.z=0; mob.wanderTimer=3+Math.random()*5; }
+      else{ mob.state='wander'; const a=Math.random()*Math.PI*2; mob.vel.x=Math.cos(a)*def.speed*0.4; mob.vel.z=Math.sin(a)*def.speed*0.4; mob.mesh.rotation.y=Math.atan2(Math.cos(a),Math.sin(a)); mob.wanderTimer=2+Math.random()*4; }
+    }
+  } else if(mob.type==='chooper_guardian' || mob.type==='great_guardian'){
+    // Guardian: chases player when in range
+    if(distToPlayer<def.detectionRange){
+      mob.state='chase';
+      const dx=player.pos.x-pos.x, dz=player.pos.z-pos.z;
+      const d=Math.sqrt(dx*dx+dz*dz);
+      if(d>0.5){ mob.vel.x=(dx/d)*def.speed; mob.vel.z=(dz/d)*def.speed; mob.mesh.rotation.y=Math.atan2(dx,dz); }
+      mob.mesh.children.forEach(c=>{ if(c.name==='eye') c.visible=true; });
+      if(distToPlayer<1.5){
+        if(!mob.attackCooldown||mob.attackCooldown<=0){ takeDamage(def.contactDamage,'Killed by '+def.name); mob.attackCooldown=1.0; }
+      }
+    } else {
+      if(mob.state!=='idle'){ mob.state='idle'; mob.vel.x=0; mob.vel.z=0; }
+      mob.mesh.children.forEach(c=>{ if(c.name==='eye') c.visible=false; });
+      mob.wanderTimer-=dt;
+      if(mob.wanderTimer<=0){
+        const a=Math.random()*Math.PI*2;
+        mob.vel.x=Math.cos(a)*def.speed*0.3;
+        mob.vel.z=Math.sin(a)*def.speed*0.3;
+        mob.mesh.rotation.y=Math.atan2(Math.cos(a),Math.sin(a));
+        mob.wanderTimer=3+Math.random()*4;
+      }
+    }
+    if(mob.attackCooldown>0) mob.attackCooldown-=dt;
+  } else if(mob.type==='tiny_chooper'){
+    // Tiny Chooper: fast hostile, small
+    if(distToPlayer<def.detectionRange){
+      mob.state='chase';
+      const dx=player.pos.x-pos.x, dz=player.pos.z-pos.z;
+      const d=Math.sqrt(dx*dx+dz*dz);
+      if(d>0.3){ mob.vel.x=(dx/d)*def.speed; mob.vel.z=(dz/d)*def.speed; mob.mesh.rotation.y=Math.atan2(dx,dz); }
+      if(distToPlayer<1.0){
+        if(!mob.attackCooldown||mob.attackCooldown<=0){ takeDamage(def.contactDamage,'Killed by Tiny Chooper'); mob.attackCooldown=0.7; }
+      }
+    } else {
+      mob.wanderTimer-=dt;
+      if(mob.wanderTimer<=0){
+        const a=Math.random()*Math.PI*2;
+        mob.vel.x=Math.cos(a)*def.speed*0.6;
+        mob.vel.z=Math.sin(a)*def.speed*0.6;
+        mob.mesh.rotation.y=Math.atan2(Math.cos(a),Math.sin(a));
+        mob.wanderTimer=1+Math.random()*2;
+      }
+    }
+    if(mob.attackCooldown>0) mob.attackCooldown-=dt;
+  } else if(mob.type==='corrupt_witch'){
+    // Corrupt Witch: stationary NPC, faces player when close
+    mob.vel.x=0; mob.vel.z=0;
+    if(distToPlayer<6){
+      const dx=player.pos.x-pos.x, dz=player.pos.z-pos.z;
+      mob.mesh.rotation.y=Math.atan2(dx,dz);
+    }
+  } else if(mob.type==='chooper_king'){
+    // Chooper King: boss AI
+    mob._bossTimer = (mob._bossTimer||0) + dt;
+    // Phase-based attacks
+    const dx=player.pos.x-pos.x, dz=player.pos.z-pos.z;
+    const d=Math.sqrt(dx*dx+dz*dz);
+    mob.mesh.rotation.y=Math.atan2(dx,dz);
+    // Always face and chase player
+    if(d>2){ mob.vel.x=(dx/d)*def.speed; mob.vel.z=(dz/d)*def.speed; }
+    else { mob.vel.x=0; mob.vel.z=0; }
+    // Contact damage
+    if(distToPlayer<2.0){
+      if(!mob.attackCooldown||mob.attackCooldown<=0){ takeDamage(def.contactDamage,'Killed by the Chooper King'); mob.attackCooldown=0.8; }
+    }
+    // Jump attack every 5 seconds
+    if(mob._bossTimer>5 && mob.onGround){
+      mob._bossTimer=0;
+      mob.vel.y=12;
+      // AOE on landing is handled in updateMobs
+      mob._jumpAttacking=true;
+    }
+    // Summon tiny choopers every 12 seconds
+    if(mob._bossTimer>12 && !mob._summoned){
+      mob._summoned=true;
+      for(let si=0;si<2;si++){
+        const sa=Math.random()*Math.PI*2;
+        spawnMob('tiny_chooper',pos.x+Math.cos(sa)*3,pos.y+1,pos.z+Math.sin(sa)*3);
+      }
+      flash('The Chooper King summons reinforcements!');
+    }
+    if(mob._bossTimer>12.5) mob._summoned=false;
+    if(mob.attackCooldown>0) mob.attackCooldown-=dt;
+    // Update health bar
+    updateBossHealthBar(mob);
   } else {
     mob.wanderTimer-=dt;
     if(mob.wanderTimer<=0){
@@ -2762,8 +3894,9 @@ function updateMobs(dt){
         });
       }
     }
-    // Despawn if too far
-    const dist=pos.distanceTo(new THREE.Vector3(player.pos.x,player.pos.y,player.pos.z));
+    // Despawn if too far (inline distance to avoid Vector3 allocation)
+    const ddx=pos.x-player.pos.x, ddy=pos.y-player.pos.y, ddz=pos.z-player.pos.z;
+    const dist=Math.sqrt(ddx*ddx+ddy*ddy+ddz*ddz);
     if(dist>RENDER_DIST*CHUNK_SIZE*1.5){ scene.remove(mob.mesh); mobs.splice(i,1); continue; }
     updateMobAI(mob,dt);
     mob.vel.y-=16*dt;
@@ -2781,7 +3914,18 @@ function updateMobs(dt){
     }
     const ny=pos.y+mob.vel.y*dt;
     if(!isSolid(Math.floor(pos.x),Math.floor(ny),Math.floor(pos.z))){ pos.y=ny; mob.onGround=false; }
-    else{ if(mob.vel.y<0)mob.onGround=true; mob.vel.y=0; }
+    else{
+      if(mob.vel.y<0){
+        // Chooper King jump attack AOE landing
+        if(mob._jumpAttacking && mob.type==='chooper_king'){
+          mob._jumpAttacking=false;
+          const pdist=Math.sqrt((pos.x-player.pos.x)**2+(pos.z-player.pos.z)**2);
+          if(pdist<4) takeDamage(5,'Crushed by the Chooper King');
+        }
+        mob.onGround=true;
+      }
+      mob.vel.y=0;
+    }
     if(pos.y<-10){ scene.remove(mob.mesh); mobs.splice(i,1); continue; }
     // Bobbing animation
     if(!def.hostile&&mob.state==='wander'){
@@ -2792,6 +3936,8 @@ function updateMobs(dt){
 }
 
 function attackMob(mob){
+  // Don't attack friendly mobs (Voyager)
+  if(mob.type==='voyager') return;
   let damage=1;
   if(player.gameMode==='survival'){
     const slot=inventory[selectedSlot];
@@ -2823,6 +3969,11 @@ function killMob(mob){
   const def=MOB_TYPES[mob.type];
   const pos=mob.mesh.position.clone();
   for(let d=0;d<def.dropCount;d++) for(const dropId of def.drops) spawnDrop(pos.x,pos.y+0.5,pos.z,dropId);
+  // Choop Block: 1% drop chance from Choopers
+  if(mob.type==='chooper' && Math.random()<0.01){
+    spawnDrop(pos.x,pos.y+0.5,pos.z,B.CHOOP_BLOCK);
+    flash('A Choop Block dropped!');
+  }
   scene.remove(mob.mesh);
   const idx=mobs.indexOf(mob); if(idx>=0)mobs.splice(idx,1);
   // Wake nearby sleeping choopers when a chooper is killed
@@ -2832,6 +3983,29 @@ function killMob(mob){
         if(m.mesh.position.distanceTo(pos)<16){ m.state='provoked'; }
       }
     }
+  }
+  // Great Guardian killed → allow witch quest completion
+  if(mob.type==='great_guardian'){
+    questState.greatGuardianKilled=true;
+    flash('The Great Guardian falls! Return to the Witch.');
+    // Remove boss health bar
+    const bar=document.getElementById('boss-bar');
+    if(bar) bar.style.display='none';
+  }
+  // Chooper King killed → trigger watcher phase
+  if(mob.type==='chooper_king'){
+    questState.bossDefeated=true;
+    flash('The Chooper King has fallen! The watchers attack!');
+    // Spawn watchers
+    for(let w=0;w<6;w++){
+      const wa=Math.random()*Math.PI*2;
+      spawnMob('chooper_guardian',pos.x+Math.cos(wa)*8,pos.y+1,pos.z+Math.sin(wa)*8);
+    }
+    // Spawn exit portal after all watchers are killed (checked in game loop)
+    questState._watchersPending=true;
+    // Remove boss health bar
+    const bar=document.getElementById('boss-bar');
+    if(bar) bar.style.display='none';
   }
 }
 
@@ -2943,6 +4117,12 @@ function updatePlayer(dt){
   }
 
   player.inWater = inWaterAt(player.pos.x, player.pos.y, player.pos.z);
+  const playerInLava = inLavaAt(player.pos.x, player.pos.y, player.pos.z);
+
+  // Lava damage
+  if (player.gameMode==='survival' && !player.dead && playerInLava){
+    takeDamage(Math.ceil(dt*8), 'Burned in lava');
+  }
 
   // Drowning
   if (player.gameMode==='survival' && !player.dead){
@@ -2985,6 +4165,52 @@ function updatePlayer(dt){
     }
   }
 
+  // Portal collision detection (works for all portals in all dimensions)
+  {
+    const bx=Math.floor(player.pos.x), by=Math.floor(player.pos.y), bz=Math.floor(player.pos.z);
+    if(getBlock(bx,by,bz)===B.PORTAL || getBlock(bx,by+1,bz)===B.PORTAL){
+      // Add cooldown to prevent rapid dimension switching
+      if(!questState._portalCooldown || performance.now()>questState._portalCooldown){
+        questState._portalCooldown=performance.now()+2000; // 2 second cooldown
+        if(questState.currentDimension==='overworld' && questState.portalActivated) enterDimension('choopLand');
+        else if(questState.currentDimension==='choopLand' && questState.witchQuestDone){
+          // Check if near castle maze portal (underground) → go to colosseum
+          // Or near surface portal → go to overworld
+          if(by<40) enterDimension('colosseum');
+          else enterDimension('overworld');
+        }
+        else if(questState.currentDimension==='choopLand') enterDimension('overworld');
+        else if(questState.currentDimension==='colosseum') enterDimension('overworld');
+      }
+    }
+  }
+  // Castle key gate: remove gate blocks when player with key approaches
+  if(questState.currentDimension==='choopLand' && questState.hasCastleKey && !questState._castleGateOpened){
+    const hasKey=inventory.some(s=>s && s.id===B.CASTLE_KEY);
+    if(hasKey){
+      // Check for Castle gate blocks near player (Stone blocks at entrance)
+      const px=Math.floor(player.pos.x), py=Math.floor(player.pos.y), pz=Math.floor(player.pos.z);
+      for(let dx=-3;dx<=3;dx++) for(let dy=0;dy<=3;dy++) for(let dz=-3;dz<=3;dz++){
+        const bid=getBlock(px+dx,py+dy,pz+dz);
+        if(bid===B.STONE && dy>=1 && dy<=3 && Math.abs(dx)<=1 && dz===0){
+          // This looks like a Castle gate - open it
+          setBlock(px+dx,py+dy,pz+dz,0);
+        }
+      }
+      questState._castleGateOpened=true;
+      flash('The Castle Key unlocks the gate!');
+    }
+  }
+  // Spawn Chooper King when entering Colosseum
+  if(questState.currentDimension==='colosseum' && !questState.bossDefeated && !questState._bossSpawned){
+    const hasBoss=mobs.some(m=>m.type==='chooper_king');
+    if(!hasBoss){
+      spawnMob('chooper_king',0.5,17,0.5);
+      questState._bossSpawned=true;
+      flash('The Chooper King awakens!');
+    }
+  }
+
   camera.position.set(player.pos.x, player.pos.y+player.eye, player.pos.z);
   camera.rotation.order = 'YXZ';
   camera.rotation.y = player.yaw;
@@ -2992,21 +4218,44 @@ function updatePlayer(dt){
 }
 
 // ---------- Chunk streaming ----------
-function updateChunks(){
+// Synchronous chunk generation for initial load
+function updateChunksSync(){
   const pcx = Math.floor(player.pos.x/CHUNK_SIZE);
   const pcz = Math.floor(player.pos.z/CHUNK_SIZE);
-  // Generate / keep
   for (let dz=-RENDER_DIST; dz<=RENDER_DIST; dz++){
     for (let dx=-RENDER_DIST; dx<=RENDER_DIST; dx++){
       if (dx*dx+dz*dz > (RENDER_DIST+0.5)*(RENDER_DIST+0.5)) continue;
       const cx=pcx+dx, cz=pcz+dz;
       const k = chunkKey(cx,cz);
       if (!chunks.has(k)){
-        // Restore modified blocks before regenerating
         const saved = modifiedChunks.get(k);
         const ch = generateChunk(cx,cz);
         if (saved) ch.blocks.set(saved);
         chunks.set(k, ch);
+      }
+    }
+  }
+}
+function updateChunks(){
+  const pcx = Math.floor(player.pos.x/CHUNK_SIZE);
+  const pcz = Math.floor(player.pos.z/CHUNK_SIZE);
+  // Generate / keep — request from worker (overworld) or generate on main thread (other dimensions)
+  for (let dz=-RENDER_DIST; dz<=RENDER_DIST; dz++){
+    for (let dx=-RENDER_DIST; dx<=RENDER_DIST; dx++){
+      if (dx*dx+dz*dz > (RENDER_DIST+0.5)*(RENDER_DIST+0.5)) continue;
+      const cx=pcx+dx, cz=pcz+dz;
+      const k = chunkKey(cx,cz);
+      if (!chunks.has(k) && !pendingChunks.has(k)){
+        if(questState.currentDimension==='overworld'){
+          pendingChunks.add(k);
+          chunkWorker.postMessage({type:'generate', cx, cz});
+        } else {
+          // Generate dimension chunks on main thread
+          const saved = modifiedChunks.get(k);
+          const ch = generateChunk(cx,cz);
+          if (saved) ch.blocks.set(saved);
+          chunks.set(k, ch);
+        }
       }
     }
   }
@@ -3034,6 +4283,12 @@ function updateChunks(){
       chunks.delete(k);
     }
   }
+  // Clean up stale pending worker requests
+  for (const k of pendingChunks){
+    const [cx,cz] = k.split(',').map(Number);
+    const dx=cx-pcx, dz=cz-pcz;
+    if(dx*dx+dz*dz > (RENDER_DIST+2)*(RENDER_DIST+2)) pendingChunks.delete(k);
+  }
   // Passive mob spawning (every 5 seconds)
   mobSpawnTimer += 0.016; // approximate dt since updateChunks doesn't receive dt
   if (mobSpawnTimer >= 5){
@@ -3058,7 +4313,7 @@ function updateChunks(){
         const biome=biomeAt(wx,wz);
         const td = MOB_TYPES[typeName];
         if(!td.spawnBiomes||!td.spawnBiomes.includes(biome)) continue;
-        if(Math.random()>0.15) continue;
+        if(Math.random()>0.04) continue;
         const h=heightAt(wx,wz);
         if(h<SEA_LEVEL) continue;
         if(isSolid(wx,h+1,wz)||isSolid(wx,h+2,wz)) continue;
@@ -3098,6 +4353,17 @@ function updateSky(dt){
 // ---------- Debug / HUD ----------
 let debug = false;
 const hud = document.getElementById('hud');
+function updateBossHealthBar(mob){
+  const bar=document.getElementById('boss-bar');
+  const name=document.getElementById('boss-name');
+  const fill=document.getElementById('boss-fill');
+  if(!mob||mob.health<=0){ bar.style.display='none'; name.style.display='none'; return; }
+  const def=MOB_TYPES[mob.type];
+  bar.style.display='block';
+  name.style.display='block';
+  name.textContent=def.name;
+  fill.style.width=Math.max(0,(mob.health/def.health)*100)+'%';
+}
 function updateHUD(fps){
   const hit = raycast();
   if (hit){
@@ -3175,6 +4441,69 @@ function updateHUD(fps){
 }
 
 // ---------- Save/Load ----------
+// ---------- World Management ----------
+let currentWorldId = null;
+function getWorlds(){
+  try{ return JSON.parse(localStorage.getItem('voxelcraft_worlds'))||[]; }catch(e){ return []; }
+}
+function saveWorldIndex(worlds){
+  localStorage.setItem('voxelcraft_worlds', JSON.stringify(worlds));
+}
+function generateWorldId(){
+  return 'w_'+Math.random().toString(36).slice(2,8)+Date.now().toString(36);
+}
+function deleteWorld(id){
+  let worlds=getWorlds().filter(w=>w.id!==id);
+  saveWorldIndex(worlds);
+  localStorage.removeItem('voxelcraft_world_'+id);
+}
+function renderWorldList(){
+  const list=document.getElementById('world-list');
+  const worlds=getWorlds();
+  list.innerHTML='';
+  if(worlds.length===0){ showLobbyStep(5); return; }
+  worlds.sort((a,b)=>b.lastPlayed-a.lastPlayed);
+  for(const w of worlds){
+    const entry=document.createElement('div'); entry.className='world-entry';
+    const info=document.createElement('div'); info.className='world-info';
+    const nm=document.createElement('div'); nm.className='wname'; nm.textContent=w.name;
+    const dt=document.createElement('div'); dt.className='wdetail';
+    dt.textContent='Seed: '+w.seed+' · '+new Date(w.lastPlayed).toLocaleDateString();
+    info.appendChild(nm); info.appendChild(dt);
+    const del=document.createElement('button'); del.className='world-del'; del.textContent='Delete';
+    del.onclick=(e)=>{ e.stopPropagation(); if(confirm('Delete "'+w.name+'"?')){ deleteWorld(w.id); renderWorldList(); } };
+    entry.appendChild(info); entry.appendChild(del);
+    entry.onclick=()=>{ loadWorldAndStart(w); };
+    list.appendChild(entry);
+  }
+}
+function loadWorldAndStart(w){
+  currentWorldId=w.id;
+  SEED=w.seed;
+  chunkWorker.postMessage({type:'config', seed:SEED});
+  const wData=localStorage.getItem('voxelcraft_world_'+w.id);
+  if(wData){
+    startGame();
+    loadGame();
+  } else {
+    startGame();
+  }
+  const worlds=getWorlds();
+  const wi=worlds.findIndex(x=>x.id===w.id);
+  if(wi>=0){ worlds[wi].lastPlayed=Date.now(); saveWorldIndex(worlds); }
+}
+function createWorldAndStart(name, seedStr){
+  const seed = seedStr.trim()==='' ? Math.floor(Math.random()*1e9) : parseInt(seedStr)||Math.floor(Math.random()*1e9);
+  const id = generateWorldId();
+  const worlds = getWorlds();
+  worlds.push({id, name:name.trim()||'New World', seed, lastPlayed:Date.now()});
+  saveWorldIndex(worlds);
+  currentWorldId = id;
+  SEED = seed;
+  chunkWorker.postMessage({type:'config', seed:SEED});
+  startGame();
+}
+
 function saveGame(){
   const data = {
     seed: SEED,
@@ -3199,35 +4528,81 @@ function saveGame(){
     smelterFuelLeft: smelterFuelLeft,
     settings: { renderDist: RENDER_DIST, mouseSens: mouseSens, fov: camera.fov, dayLength: dayLength, qualityPreset: qualityPreset },
     mobs: mobs.map(m=>({type:m.type,pos:[m.mesh.position.x,m.mesh.position.y,m.mesh.position.z],health:m.health,state:m.state})),
-    chunks: {}
+    chunks: {},
+    questState: questState,
+    voyagerSpawned: voyagerSpawned,
+    currentDimension: questState.currentDimension,
+    dimensions: {}
   };
-  // Save both currently loaded and previously modified chunks
-  const allChunks = new Map(modifiedChunks);
-  for (const [k,ch] of chunks) allChunks.set(k, ch.blocks);
-  for (const [k,blocks] of allChunks){
-    let bin = '';
-    for (let i=0;i<blocks.length;i++) bin += String.fromCharCode(blocks[i]);
-    data.chunks[k] = btoa(bin);
+  // Save all dimension chunks
+  for(const dimName in dimensions){
+    const dimChunks = {};
+    const allDimChunks = new Map();
+    // Get modified chunks for non-current dimensions
+    if(dimName === questState.currentDimension){
+      for(const [k,ch] of chunks) allDimChunks.set(k, ch.blocks);
+      for(const [k,blocks] of modifiedChunks) if(!allDimChunks.has(k)) allDimChunks.set(k, blocks);
+    } else {
+      const dim = dimensions[dimName];
+      for(const [k,blocks] of dim.modifiedChunks) allDimChunks.set(k, blocks);
+    }
+    for(const [k,blocks] of allDimChunks){
+      let bin = '';
+      for(let i=0;i<blocks.length;i++) bin += String.fromCharCode(blocks[i]);
+      dimChunks[k] = btoa(bin);
+    }
+    data.dimensions[dimName] = dimChunks;
   }
   try{
-    localStorage.setItem('voxelcraft_save', JSON.stringify(data));
+    if(currentWorldId) localStorage.setItem('voxelcraft_world_'+currentWorldId, JSON.stringify(data));
     flash('Game saved');
   }catch(e){ flash('Save failed: '+e.message); }
 }
 function loadGame(){
-  const s = localStorage.getItem('voxelcraft_save');
+  const saveKey = currentWorldId ? 'voxelcraft_world_'+currentWorldId : 'voxelcraft_save';
+  const s = localStorage.getItem(saveKey);
   if (!s){ flash('No save found'); return; }
   try{
     const data = JSON.parse(s);
-    if (data.seed !== SEED){ flash('Save is for different seed'); return; }
-    // Clear current
+    if (data.seed !== undefined) SEED = data.seed;
+    // Restore quest state
+    if(data.questState) Object.assign(questState, data.questState);
+    if(data.voyagerSpawned !== undefined) voyagerSpawned = data.voyagerSpawned;
+    // Clear current dimension chunks
     for (const ch of chunks.values()) if(ch.mesh){scene.remove(ch.mesh); ch.mesh.traverse(o=>{if(o.geometry)o.geometry.dispose()});}
     chunks.clear();
-    for (const k in data.chunks){
-      const bin = atob(data.chunks[k]);
-      const arr = new Uint8Array(bin.length);
-      for (let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
-      chunks.set(k, { blocks:arr, mesh:null, dirty:true });
+    modifiedChunks.clear();
+    // Restore all dimensions
+    if(data.dimensions){
+      for(const dimName in data.dimensions){
+        const dim = dimensions[dimName];
+        if(!dim) continue;
+        dim.chunks.clear();
+        dim.modifiedChunks.clear();
+        for(const k in data.dimensions[dimName]){
+          const bin = atob(data.dimensions[dimName][k]);
+          const arr = new Uint8Array(bin.length);
+          for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+          dim.modifiedChunks.set(k, arr);
+        }
+      }
+      // Load current dimension
+      const curDim = data.currentDimension || 'overworld';
+      questState.currentDimension = curDim;
+      chunks = dimensions[curDim].chunks;
+      modifiedChunks = dimensions[curDim].modifiedChunks;
+      // Copy modified chunks into live chunks
+      for(const [k,blocks] of modifiedChunks){
+        chunks.set(k, {blocks:new Uint8Array(blocks), mesh:null, dirty:true});
+      }
+    } else {
+      // Legacy save format: just overworld chunks
+      for (const k in data.chunks){
+        const bin = atob(data.chunks[k]);
+        const arr = new Uint8Array(bin.length);
+        for (let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+        chunks.set(k, { blocks:arr, mesh:null, dirty:true });
+      }
     }
     player.pos.set(data.pos[0], data.pos[1], data.pos[2]);
     player.yaw = data.yaw; player.pitch = data.pitch;
@@ -3265,6 +4640,12 @@ function loadGame(){
       for(const m of data.mobs){ const mob=spawnMob(m.type,m.pos[0],m.pos[1],m.pos[2]); mob.health=m.health; mob.state=m.state; }
     }
     updateHotbar();
+    // Rebuild meshes for chunks around player
+    updateChunksSync();
+    for(const [k] of chunks){
+      const [cx,cz]=k.split(',').map(Number);
+      buildChunkMesh(cx,cz);
+    }
     flash('Game loaded');
   }catch(e){ flash('Load failed: '+e.message); }
 }
@@ -3274,6 +4655,7 @@ function flash(msg){ flashText=msg; flashTimer=2; }
 // ---------- Main loop ----------
 let last = performance.now(), fps=60, acc=0, frames=0, fpsT=0;
 function loop(now){
+  frameCount++;
   const dt = Math.min(0.05, (now-last)/1000);
   last = now;
   frames++; fpsT += dt;
@@ -3286,6 +4668,16 @@ function loop(now){
     updatePlayer(dt);
     updateBreaking(dt);
     updateSky(dt);
+    // Update player shadow blob (every 4 frames to save heightAt cost)
+    if(frameCount%4===0){
+      const shH = heightAt(Math.floor(player.pos.x), Math.floor(player.pos.z));
+      if (shH >= SEA_LEVEL && renderer.shadowMap.enabled) {
+        playerShadow.visible = true;
+        playerShadow.position.set(player.pos.x, shH + 0.02, player.pos.z);
+      } else {
+        playerShadow.visible = false;
+      }
+    }
     updateDrops(dt);
     updateMobs(dt);
     // Chooper spawning (day and night)
@@ -3293,7 +4685,7 @@ function loop(now){
     if(chooperSpawnTimer>=15){
       chooperSpawnTimer=0;
       let cc=0;
-      for(const m of mobs) if(m.type==='chooper'&&m.mesh.position.distanceTo(player.pos)<RENDER_DIST*CHUNK_SIZE) cc++;
+      for(const m of mobs) if(m.type==='chooper'){const pdx=m.mesh.position.x-player.pos.x,pdz=m.mesh.position.z-player.pos.z;if(pdx*pdx+pdz*pdz<RENDER_DIST*CHUNK_SIZE*RENDER_DIST*CHUNK_SIZE)cc++;}
       if(cc<4){
         const a=Math.random()*Math.PI*2, d=10+Math.random()*15;
         const sx=player.pos.x+Math.cos(a)*d, sz=player.pos.z+Math.sin(a)*d;
@@ -3316,6 +4708,86 @@ function loop(now){
         }
       }
     }
+    // Voyager spawning: when player has 3+ choop blocks and hasn't traded yet
+    if(!voyagerSpawned && questState.currentDimension==='overworld'){
+      let choopCount = 0;
+      for(const s of inventory) if(s && s.id===B.CHOOP_BLOCK) choopCount += s.count;
+      if(choopCount >= 3){
+        // Try multiple positions to find a valid spawn
+        for(let attempt=0;attempt<10;attempt++){
+          const a=Math.random()*Math.PI*2, d=15+Math.random()*10;
+          const sx=player.pos.x+Math.cos(a)*d, sz=player.pos.z+Math.sin(a)*d;
+          const sh=heightAt(Math.floor(sx),Math.floor(sz));
+          if(sh>=SEA_LEVEL && !isSolid(Math.floor(sx),sh+1,Math.floor(sz))){
+            voyagerSpawned = true;
+            spawnMob('voyager',Math.floor(sx)+0.5,sh+1,Math.floor(sz)+0.5);
+            flash('A Voyager senses your Choop Blocks and approaches...');
+            break;
+          }
+        }
+      }
+    }
+    // Choop Land mob spawning
+    if(questState.currentDimension==='choopLand'){
+      choopLandSpawnTimer = (choopLandSpawnTimer||0) + dt;
+      if(choopLandSpawnTimer > 8){
+        choopLandSpawnTimer = 0;
+        const counts={chooper_worker:0,chooper_guardian:0,tiny_chooper:0,corrupt_witch:0,great_guardian:0};
+        for(const m of mobs) if(counts[m.type]!==undefined) counts[m.type]++;
+        const a=Math.random()*Math.PI*2, d=10+Math.random()*15;
+        const sx=player.pos.x+Math.cos(a)*d, sz=player.pos.z+Math.sin(a)*d;
+        const sh=Math.floor(50 + fbm(Math.floor(sx)*0.008, Math.floor(sz)*0.008, SEED+1000000, 4)*20);
+        if(sh>40 && !isSolid(Math.floor(sx),sh+1,Math.floor(sz))){
+          const distFromCenter=Math.sqrt(sx*sx+sz*sz);
+          if(distFromCenter<100 && counts.chooper_worker<5 && Math.random()<0.5){
+            spawnMob('chooper_worker',Math.floor(sx)+0.5,sh+1,Math.floor(sz)+0.5);
+          } else if(distFromCenter>50 && counts.chooper_guardian<3 && Math.random()<0.3){
+            spawnMob('chooper_guardian',Math.floor(sx)+0.5,sh+1,Math.floor(sz)+0.5);
+          } else if(counts.tiny_chooper<4 && Math.random()<0.4){
+            spawnMob('tiny_chooper',Math.floor(sx)+0.5,sh+1,Math.floor(sz)+0.5);
+          }
+        }
+      }
+      // Spawn Great Guardian once (roaming boss) if not killed
+      if(!questState.greatGuardianKilled && !questState._greatGuardianSpawned){
+        const hasGG=mobs.some(m=>m.type==='great_guardian');
+        if(!hasGG){
+          const ga=Math.random()*Math.PI*2;
+          const gd=80+Math.random()*40;
+          const gx=player.pos.x+Math.cos(ga)*gd, gz=player.pos.z+Math.sin(ga)*gd;
+          const gh=Math.floor(50 + fbm(Math.floor(gx)*0.008, Math.floor(gz)*0.008, SEED+1000000, 4)*20);
+          if(gh>40){
+            spawnMob('great_guardian',Math.floor(gx)+0.5,gh+1,Math.floor(gz)+0.5);
+            questState._greatGuardianSpawned=true;
+          }
+        }
+      }
+      // Spawn Corrupt Witch near witch hut area (150-250 blocks from center)
+      if(!questState._witchSpawned){
+        const hasWitch=mobs.some(m=>m.type==='corrupt_witch');
+        if(!hasWitch){
+          // Try to spawn near a witch hut location
+          const wa=Math.random()*Math.PI*2;
+          const wd=180+Math.random()*50;
+          const wx=player.pos.x+Math.cos(wa)*wd, wz=player.pos.z+Math.sin(wa)*wd;
+          const wh=Math.floor(50 + fbm(Math.floor(wx)*0.008, Math.floor(wz)*0.008, SEED+1000000, 4)*20);
+          if(wh>40){
+            spawnMob('corrupt_witch',Math.floor(wx)+0.5,wh+1,Math.floor(wz)+0.5);
+            questState._witchSpawned=true;
+          }
+        }
+      }
+    }
+    // Watcher check: if all watchers killed after Chooper King, spawn exit portal
+    if(questState._watchersPending){
+      const hasGuardians=mobs.some(m=>m.type==='chooper_guardian' && m.state==='chase');
+      if(!hasGuardians){
+        questState._watchersPending=false;
+        // Spawn exit portal at colosseum center
+        for(let dy=16;dy<=20;dy++) for(let dx=-1;dx<=1;dx++) setBlock(dx,dy,0,B.PORTAL);
+        flash('A portal appears in the arena!');
+      }
+    }
     updateSmelter(dt);
     if (smelterOpen) renderSmelter();
     // Clouds drift
@@ -3330,8 +4802,8 @@ function loop(now){
   if (mpMode !== 'none'){
     mpBroadcastState();
     updateRemotePlayers(dt);
-    renderChat();
   }
+  renderChat();
 
   if (flashTimer>0){
     flashTimer -= dt;
@@ -3366,7 +4838,7 @@ function pauseGame(){
 function resumeGame(){
   paused = false;
   document.getElementById('pause-menu').style.display = 'none';
-  if(gameStarted && !player.dead) canvas.requestPointerLock();
+  if(gameStarted && !player.dead) safeRequestPointerLock();
 }
 document.getElementById('pause-resume').addEventListener('click', resumeGame);
 document.getElementById('pause-settings').addEventListener('click', ()=>{
@@ -3379,7 +4851,19 @@ document.getElementById('pause-quit').addEventListener('click', function(){
 
 function quitGame(){
   try{ saveGame(); }catch(e){}
-  window.location = window.location.href;
+  // Clean up scene
+  for(const ch of chunks.values()) if(ch.mesh){scene.remove(ch.mesh);ch.mesh.traverse(o=>{if(o.geometry)o.geometry.dispose()});}
+  chunks.clear(); modifiedChunks.clear();
+  for(const m of mobs) scene.remove(m.mesh);
+  mobs.length=0;
+  gameStarted = false;
+  paused = false;
+  currentWorldId = null;
+  document.getElementById('pause-menu').style.display = 'none';
+  document.getElementById('lobby').style.display = 'flex';
+  renderWorldList();
+  showLobbyStep(4);
+  document.exitPointerLock();
 }
 // Resume from settings also resumes game
 const _origCloseSettings = closeSettings;
@@ -3433,6 +4917,14 @@ function applyQuality(){
   // Shadows
   renderer.shadowMap.enabled = q.shadows;
   sun.castShadow = q.shadows;
+  if (q.shadows) {
+    const res = qualityPreset === 'ultra' ? 2048 : 1024;
+    sun.shadow.mapSize.width = res;
+    sun.shadow.mapSize.height = res;
+    sun.shadow.map?.dispose();
+    sun.shadow.map = null;
+  }
+  playerShadow.visible = false;
 }
 document.getElementById('opt-quality').addEventListener('change', e=>{
   qualityPreset = e.target.value;
@@ -3474,9 +4966,15 @@ function showLobbyStep(n){
 }
 
 function startGame(){
+  // Generate chunks synchronously so player doesn't fall through the world
+  updateChunksSync();
+  for (const [k] of chunks){
+    const [cx,cz] = k.split(',').map(Number);
+    buildChunkMesh(cx,cz);
+  }
   gameStarted = true;
   document.getElementById('lobby').style.display = 'none';
-  if (!isMobile) canvas.requestPointerLock();
+  if (!isMobile) safeRequestPointerLock();
   else {
     locked = true;
     document.getElementById('mobile-controls').style.display = 'block';
@@ -3491,6 +4989,8 @@ function createPlayerMesh(name, color){
   const bodyMat = new THREE.MeshLambertMaterial({color});
   const body = new THREE.Mesh(bodyGeo, bodyMat);
   body.position.y = 0.9;
+  body.castShadow = true;
+  body.receiveShadow = true;
   group.add(body);
   // Nametag sprite
   const canvas2 = document.createElement('canvas');
@@ -3918,7 +5418,6 @@ function renderChat(){
 }
 
 function openChat(){
-  if (mpMode === 'none') return;
   chatOpen = true;
   const wrap = document.getElementById('chat-input-wrap');
   const input = document.getElementById('chat-input');
@@ -3931,7 +5430,7 @@ function openChat(){
 function closeChat(){
   chatOpen = false;
   document.getElementById('chat-input-wrap').style.display = 'none';
-  if (gameStarted) canvas.requestPointerLock();
+  if (gameStarted) safeRequestPointerLock();
 }
 
 // Patch setBlock to broadcast changes in multiplayer
@@ -3943,7 +5442,8 @@ setBlock = function(wx,wy,wz,id){
 
 // Lobby button handlers
 document.getElementById('btn-singleplayer').addEventListener('click', ()=>{
-  startGame();
+  renderWorldList();
+  showLobbyStep(4);
 });
 document.getElementById('btn-multiplayer').addEventListener('click', ()=>{
   mpName = 'Player' + Math.floor(1000 + Math.random()*9000);
@@ -3979,6 +5479,154 @@ document.getElementById('btn-cancel-host').addEventListener('click', ()=>{
   for (const id in mpMeshes) removePlayerMesh(id);
   showLobbyStep(2);
 });
+// World list & create world handlers
+document.getElementById('btn-create-world').addEventListener('click', ()=>{
+  document.getElementById('world-name-input').value='New World';
+  document.getElementById('world-seed-input').value='';
+  showLobbyStep(5);
+});
+document.getElementById('btn-worlds-back').addEventListener('click', ()=>{
+  showLobbyStep(1);
+});
+document.getElementById('btn-play-world').addEventListener('click', ()=>{
+  const name=document.getElementById('world-name-input').value.trim()||'New World';
+  const seed=document.getElementById('world-seed-input').value.trim();
+  createWorldAndStart(name, seed);
+});
+document.getElementById('world-seed-input').addEventListener('keydown', (e)=>{
+  if(e.key==='Enter'){
+    const name=document.getElementById('world-name-input').value.trim()||'New World';
+    const seed=document.getElementById('world-seed-input').value.trim();
+    createWorldAndStart(name, seed);
+  }
+});
+document.getElementById('btn-create-back').addEventListener('click', ()=>{
+  renderWorldList();
+  showLobbyStep(4);
+});
+
+// ---------- Commands ----------
+function sysMsg(text){
+  addChatMessage('System', text);
+}
+function findNearestCave(maxDist){
+  const px=Math.floor(player.pos.x), py=Math.floor(player.pos.y), pz=Math.floor(player.pos.z);
+  let best=null, bestD=maxDist*maxDist;
+  for(let dy=-maxDist;dy<=maxDist;dy++){
+    for(let dx=-maxDist;dx<=maxDist;dx++){
+      for(let dz=-maxDist;dz<=maxDist;dz++){
+        const wx=px+dx, wy=py+dy, wz=pz+dz;
+        if(wy<3||wy>=WORLD_HEIGHT-2) continue;
+        const id=getBlock(wx,wy,wz);
+        if(id!==0) continue;
+        // Check it's a cave: air with solid above and below
+        const above=getBlock(wx,wy+1,wz), below=getBlock(wx,wy-1,wz);
+        if(above===0||below===0) continue;
+        const d=dx*dx+dy*dy+dz*dz;
+        if(d<bestD){ bestD=d; best={x:wx+0.5,y:wy+1,z:wz+0.5}; }
+      }
+    }
+  }
+  return best;
+}
+function handleCommand(text){
+  const parts = text.toLowerCase().split(/\s+/);
+  const cmd = parts[0];
+  // cmd:tp
+  if(cmd==='cmd:tp' || cmd==='tp'){
+    if(parts.length<2){ sysMsg('Usage: tp me cave | tp me surface | tp me spawn | tp <x> <y> <z>'); return true; }
+    const target = parts[1];
+    // tp me cave - find nearest cave
+    if(target==='me' && parts[2]==='cave'){
+      const cave = findNearestCave(80);
+      if(cave){
+        player.pos.set(cave.x, cave.y, cave.z);
+        player.vel.set(0,0,0);
+        sysMsg('Teleported to nearest cave at '+Math.floor(cave.x)+', '+Math.floor(cave.y)+', '+Math.floor(cave.z));
+      } else {
+        sysMsg('No cave found within 80 blocks. Try digging deeper!');
+      }
+      return true;
+    }
+    // tp me surface
+    if(target==='me' && parts[2]==='surface'){
+      const sx=Math.floor(player.pos.x), sz=Math.floor(player.pos.z);
+      const h=heightAt(sx,sz);
+      player.pos.set(sx+0.5, h+2, sz+0.5);
+      player.vel.set(0,0,0);
+      sysMsg('Teleported to surface at '+sx+', '+(h+2)+', '+sz);
+      return true;
+    }
+    // tp me spawn
+    if(target==='me' && parts[2]==='spawn'){
+      const sh=heightAt(0,0);
+      player.pos.set(0.5, sh+2, 0.5);
+      player.vel.set(0,0,0);
+      sysMsg('Teleported to spawn');
+      return true;
+    }
+    // tp <x> <y> <z>
+    if(parts.length>=4){
+      const x=parseFloat(parts[1]), y=parseFloat(parts[2]), z=parseFloat(parts[3]);
+      if(!isNaN(x)&&!isNaN(y)&&!isNaN(z)){
+        player.pos.set(x+0.5, y, z+0.5);
+        player.vel.set(0,0,0);
+        sysMsg('Teleported to '+Math.floor(x)+', '+Math.floor(y)+', '+Math.floor(z));
+      } else {
+        sysMsg('Invalid coordinates');
+      }
+      return true;
+    }
+    // tp me portal
+    if(target==='me' && parts[2]==='portal'){
+      if(questState.portalX!==null){
+        const sh=heightAt(questState.portalX,questState.portalZ);
+        player.pos.set(questState.portalX+0.5, sh+2, questState.portalZ+0.5);
+        player.vel.set(0,0,0);
+        sysMsg('Teleported to portal at '+questState.portalX+', '+(sh+2)+', '+questState.portalZ);
+      } else {
+        sysMsg('No portal location known yet. Use a Portal Map first.');
+      }
+      return true;
+    }
+    sysMsg('Usage: tp me cave | tp me surface | tp me spawn | tp me portal | tp <x> <y> <z>');
+    return true;
+  }
+  // cmd:give
+  if(cmd==='cmd:give' || cmd==='give'){
+    if(parts.length<2){ sysMsg('Usage: give <item> [count] — e.g. give choop 3, give sword, give all'); return true; }
+    // "give all" fills inventory with one of every item
+    if(parts[1]==='all'){
+      for(let i=1;i<BLOCKS.length;i++) addToInventory(i);
+      sysMsg('Gave all items');
+      return true;
+    }
+    const query=parts.slice(1).join(' ').toLowerCase();
+    const count=parseInt(parts[parts.length-1]);
+    const hasCount=!isNaN(count)&&count>0;
+    const nameQuery=hasCount?parts.slice(1,-1).join(' ').toLowerCase():query;
+    // Find best matching block
+    let bestId=-1, bestScore=0;
+    for(let i=1;i<BLOCKS.length;i++){
+      const bn=BLOCKS[i].name.toLowerCase();
+      if(bn===nameQuery){bestId=i;bestScore=999;break;}
+      if(bn.startsWith(nameQuery)&&nameQuery.length>bestScore){bestId=i;bestScore=nameQuery.length;}
+      if(bn.includes(nameQuery)&&nameQuery.length>bestScore){bestId=i;bestScore=nameQuery.length;}
+    }
+    if(bestId<0){sysMsg('No item matching "'+nameQuery+'"');return true;}
+    const amt=hasCount?Math.min(count,64):1;
+    for(let i=0;i<amt;i++) addToInventory(bestId);
+    updateHotbar();
+    sysMsg('Gave '+amt+'x '+BLOCKS[bestId].name);
+    return true;
+  }
+  // cmd:help
+  if(cmd==='cmd:help' || cmd==='help' || cmd==='cmd:?'){
+    sysMsg('Commands: tp me cave | tp me surface | tp me spawn | tp me portal | tp <x> <y> <z> | give <item> [count] | help');
+    return true;
+  }
+  return false;
+}
 
 // Chat input handlers
 document.getElementById('chat-input').addEventListener('keydown', (e)=>{
@@ -3986,8 +5634,10 @@ document.getElementById('chat-input').addEventListener('keydown', (e)=>{
     const input = document.getElementById('chat-input');
     const text = input.value.trim();
     if (text){
-      addChatMessage(mpName, text);
-      mpSend({type:'chat', name: mpName, text});
+      if(!handleCommand(text)){
+        addChatMessage(mpName, text);
+        if(mpMode!=='none') mpSend({type:'chat', name: mpName, text});
+      }
     }
     closeChat();
   } else if (e.key === 'Escape'){
@@ -4010,13 +5660,49 @@ document.getElementById('respawn').addEventListener('click', ()=>{
   player.hunger = player.maxHunger;
   player.dead = false;
   player.vel.set(0,0,0);
+  // If died in Colosseum, teleport back to overworld
+  if(questState.currentDimension==='colosseum'){
+    enterDimension('overworld');
+  }
   spawnPlayer();
   document.getElementById('death').style.display = 'none';
-  canvas.requestPointerLock();
+  safeRequestPointerLock();
 });
 buildHotbar();
+// Send config to chunk generation worker
+chunkWorker.postMessage({type:'config', seed:SEED, blocks:{
+  GRASS:B.GRASS, DIRT:B.DIRT, STONE:B.STONE, SAND:B.SAND, SANDSTONE:B.SANDSTONE, SNOW:B.SNOW,
+  BEDROCK:B.BEDROCK, WATER:B.WATER, LAVA:B.LAVA, COAL_ORE:B.COAL_ORE, IRON_ORE:B.IRON_ORE,
+  GOLD_ORE:B.GOLD_ORE, DIAMOND_ORE:B.DIAMOND_ORE, COPPER_ORE:B.COPPER_ORE,
+  OAK_LOG:B.OAK_LOG, OAK_LEAVES:B.OAK_LEAVES, CACTUS:B.CACTUS, PUMPKIN:B.PUMPKIN, GRAVEL:B.GRAVEL
+}});
+// Worker response handler
+chunkWorker.onmessage = function(e){
+  const d = e.data;
+  if(d.type==='chunk'){
+    const k = chunkKey(d.cx, d.cz);
+    pendingChunks.delete(k);
+    // Discard worker chunks if we're not in overworld (worker only generates overworld)
+    if(questState.currentDimension!=='overworld') return;
+    if(chunks.has(k)) return;
+    const pcx2 = Math.floor(player.pos.x/CHUNK_SIZE);
+    const pcz2 = Math.floor(player.pos.z/CHUNK_SIZE);
+    const dist = d.cx - pcx2, dist2 = d.cz - pcz2;
+    if(dist*dist + dist2*dist2 > (RENDER_DIST+2)*(RENDER_DIST+2)) return;
+    const ch = {blocks:new Uint8Array(d.blocks), mesh:null, dirty:true};
+    const saved = modifiedChunks.get(k);
+    if(saved) ch.blocks.set(saved);
+    // Inject portal structure if this chunk contains the portal
+    if(questState.portalX!==null){
+      const pcx3=questState.portalX>>4, pcz3=questState.portalZ>>4;
+      if(d.cx===pcx3 && d.cz===pcz3) _injectPortalStructure(ch.blocks, d.cx, d.cz);
+    }
+    chunks.set(k, ch);
+  }
+};
 spawnPlayer();
-updateChunks();
+// Initial load: synchronous generation (worker may not be ready yet)
+updateChunksSync();
 // Force initial meshing
 for (const [k] of chunks){
   const [cx,cz] = k.split(',').map(Number);
